@@ -19,8 +19,7 @@ class PropertyListing(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.listing_type.title()} Listing for 
-         {self.user_property.property.title}"
+        return f"{self.listing_type.title()} Listing for {self.user_property.property.title}"
 
 
 # Property Review Request Model
@@ -42,8 +41,7 @@ class PropertyReviewRequest(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.requester.firstname}'s request on 
-         {self.property_listing.user_property.property.title}"
+        return f"{self.requester.firstname}'s request on {self.property_listing.user_property.property.title}"
 
 # Purchase agreement Model
 class PurchaseAgreement(models.Model):
@@ -57,8 +55,7 @@ class PurchaseAgreement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Agreement: {self.renter.firstname} ↔ 
-         {self.user_property.property.title}"
+        return f"Agreement: {self.renter.firstname} ↔ {self.user_property.property.title}"
 
 
 # Rental Review Model
@@ -70,7 +67,5 @@ class RentalReview(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Review for 
-         {self.agreement.user_property.property.title} by 
-          {self.agreement.renter.firstname}"
+        return f"Review for {self.agreement.user_property.property.title} by {self.agreement.renter.firstname}"
 
