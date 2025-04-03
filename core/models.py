@@ -66,8 +66,7 @@ class PropertyImage(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"Image for {self.property.title} (Active: 
-         {self.is_active})"
+        return f"Image for {self.property.title} (Active:  {self.is_active})"
 
 
 # User Property Model
@@ -82,8 +81,7 @@ class UserProperty(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.owner.firstname} owns {self.property.title} 
-         (Active: {self.is_active})"
+        return f"{self.owner.firstname} owns {self.property.title} (Active: {self.is_active})"
 
 
 # Property Document Model
