@@ -75,15 +75,40 @@ WSGI_APPLICATION = 'TrustRent.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-   'default': {
+    'core': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'trustrent_core_db',
-        'USER': 'postgres',  # or the username you chose
-        'PASSWORD': 'INcorrect09$$9',  # the password you set
+        'USER': 'postgres',
+        'PASSWORD': 'INcorrect09$$9',
         'HOST': 'localhost',
         'PORT': '5432',
-   }
+    },
+    'ops': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'trustrent_ops_db',
+        'USER': 'postgres',
+        'PASSWORD': 'INcorrect09$$9',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    'ledger': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'trustrent_ledger_db',
+        'USER': 'postgres',
+        'PASSWORD': 'INcorrect09$$9',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    },
+    
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'trustrent_core_db',
+        'USER': 'postgres',
+        'PASSWORD': 'INcorrect09$$9',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
+}
 
 
 # Password validation
@@ -126,3 +151,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+DATABASE_ROUTERS = ['TrustRent.db_router.TrustRentRouter']
+
