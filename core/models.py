@@ -77,6 +77,11 @@ class UserProperty(models.Model):
      related_name='ownership_records')
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')],
+        default='pending'
+    )
     transaction_hash = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

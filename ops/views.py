@@ -7,6 +7,7 @@ from django.contrib.auth.hashers import make_password
 from .models import User
 import json
 
+# Register User[]
 @csrf_exempt
 def register_user(request):
     if request.method != 'POST':
@@ -45,7 +46,7 @@ def register_user(request):
 
 
 
-# Create Property
+# Create Property[owner only]
 from core.models import User, Property, UserProperty
 from django.utils import timezone
 @csrf_exempt
@@ -89,7 +90,7 @@ def create_property(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-# Upload Document( deed document to property)
+# Upload Document( deed document to property)[owner only]
 from core.models import User, Property, UserProperty, PropertyDocument
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -127,5 +128,50 @@ def upload_document(request):
         return JsonResponse({'error': 'Property not found'}, status=404)
     except UserProperty.DoesNotExist:
         return JsonResponse({'error': 'User is not the owner of this property'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# Get Unverified Properties[admin and land representative only]
+
+from django.views.decorators.http import require_http_methods
+from core.models import UserProperty, Property, PropertyDocument
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_unverified_properties(request):
+    unverified = UserProperty.objects.filter(is_verified=False)
+    
+    data = []
+    for up in unverified:
+        document = PropertyDocument.objects.filter(user_property=up).first()
+        data.append({
+            "user_property_id": up.id,
+            "owner_id": up.owner.id,
+            "owner_name": f"{up.owner.firstname} {up.owner.lastname}",
+            "property_id": up.property.id,
+            "property_title": up.property.title,
+            "property_location": up.property.location,
+            "document_url": document.attachment.url if document else None
+        })
+    
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def verify_property(request):
+    try:
+        data = json.loads(request.body)
+        user_property_id = data.get('user_property_id')
+
+        user_property = UserProperty.objects.get(id=user_property_id)
+        user_property.is_verified = True
+        user_property.save()
+
+        return JsonResponse({'message': 'Property ownership verified successfully.'})
+
+    except UserProperty.DoesNotExist:
+        return JsonResponse({'error': 'UserProperty not found.'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
