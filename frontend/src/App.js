@@ -4,6 +4,7 @@ import Register from './Register';
 import Login from './Login';
 import VerificationPending from './VerificationPending';
 import AdminVerifyUsers from './AdminVerifyUserPage';
+import CreateProperty from './OwnerCreateProperty';
 import styled from 'styled-components';
 
 const AppContainer = styled.div`
@@ -32,6 +33,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/verification-pending" element={<VerificationPending />} />
           <Route path="/admin/verify-users" element={<AdminVerifyUsers />} />
+          <Route path="/create-property" element={<CreateProperty />} />
           <Route path="/" element={<Navigate to="/register" replace />} />
         </Routes>
       </AppContainer>

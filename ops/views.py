@@ -88,3 +88,44 @@ def create_property(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
+# Upload Document( deed document to property)
+from core.models import User, Property, UserProperty, PropertyDocument
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+
+@csrf_exempt
+@require_POST
+def upload_document(request):
+    try:
+        user_id = request.POST.get('user_id')
+        property_id = request.POST.get('property_id')
+        file = request.FILES.get('attachment')
+
+        if not user_id or not property_id or not file:
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        user = User.objects.get(id=user_id)
+        property = Property.objects.get(id=property_id)
+        user_property = UserProperty.objects.get(owner=user, property=property)
+
+        # Save the file
+        saved_file_path = default_storage.save(f'title_deeds/{file.name}', ContentFile(file.read()))
+
+        # Create PropertyDocument
+        PropertyDocument.objects.create(
+            user_property=user_property,
+            attachment=saved_file_path
+        )
+
+        return JsonResponse({'message': 'Document uploaded successfully.'})
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    except Property.DoesNotExist:
+        return JsonResponse({'error': 'Property not found'}, status=404)
+    except UserProperty.DoesNotExist:
+        return JsonResponse({'error': 'User is not the owner of this property'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
