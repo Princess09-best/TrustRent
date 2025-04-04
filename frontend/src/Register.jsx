@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -95,6 +96,7 @@ const Form = styled.form`
 `;
 
 const Register = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
@@ -122,14 +124,49 @@ const Register = () => {
     setError(false);
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/register/', formData);
+      const response = await axios.post('http://127.0.0.1:8000/api/register/', formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      setError(false);
       setMessage(response.data.message || 'Registration successful!');
+      
+      // Clear form after successful registration
+      setFormData({
+        firstname: '',
+        lastname: '',
+        email: '',
+        phone_number: '',
+        password: '',
+        role: 'property_buyer',
+        id_type: 'Ghana Card',
+        id_value: ''
+      });
+
+      // Show success message briefly before redirecting
+      setTimeout(() => {
+        // Navigate based on verification status
+        if (response.data.is_verified) {
+          navigate('/login');
+        } else {
+          navigate('/verification-pending');
+        }
+      }, 1500);
+      
     } catch (error) {
       setError(true);
-      if (error.response && error.response.data) {
-        setMessage(error.response.data.error);
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        setMessage(error.response.data.error || 'Registration failed. Please try again.');
+      } else if (error.request) {
+        // The request was made but no response was received
+        setMessage('No response from server. Please check your connection.');
       } else {
-        setMessage('Something went wrong. Please try again.');
+        // Something happened in setting up the request that triggered an Error
+        setMessage('An error occurred. Please try again.');
       }
     }
   };
@@ -142,33 +179,38 @@ const Register = () => {
         <Form onSubmit={handleSubmit}>
           <Input 
             name="firstname" 
-            placeholder="First Name" 
+            placeholder="First Name"
+            value={formData.firstname}
             onChange={handleChange} 
             required 
           />
           <Input 
             name="lastname" 
-            placeholder="Last Name" 
+            placeholder="Last Name"
+            value={formData.lastname}
             onChange={handleChange} 
             required 
           />
           <Input 
             name="email" 
             placeholder="Email" 
-            type="email" 
+            type="email"
+            value={formData.email}
             onChange={handleChange} 
             required 
           />
           <Input 
             name="phone_number" 
-            placeholder="Phone Number" 
+            placeholder="Phone Number"
+            value={formData.phone_number}
             onChange={handleChange} 
             required 
           />
           <Input 
             name="password" 
             placeholder="Password" 
-            type="password" 
+            type="password"
+            value={formData.password}
             onChange={handleChange} 
             required 
           />
@@ -182,7 +224,8 @@ const Register = () => {
           </Select>
           <Input 
             name="id_value" 
-            placeholder="ID Value" 
+            placeholder="ID Value"
+            value={formData.id_value}
             onChange={handleChange} 
             required 
           />

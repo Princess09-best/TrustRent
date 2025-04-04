@@ -1,5 +1,8 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Register from './Register';
+import Login from './Login';
+import VerificationPending from './VerificationPending';
 import styled from 'styled-components';
 
 const AppContainer = styled.div`
@@ -20,10 +23,17 @@ const Title = styled.h1`
 
 function App() {
   return (
-    <AppContainer>
-      <Title>TrustRent</Title>
-      <Register />
-    </AppContainer>
+    <Router>
+      <AppContainer>
+        <Title>TrustRent</Title>
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/verification-pending" element={<VerificationPending />} />
+          <Route path="/" element={<Navigate to="/register" replace />} />
+        </Routes>
+      </AppContainer>
+    </Router>
   );
 }
 
