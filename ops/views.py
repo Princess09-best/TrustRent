@@ -140,7 +140,7 @@ from core.models import UserProperty, Property, PropertyDocument
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_unverified_properties(request):
-    unverified = UserProperty.objects.filter(is_verified=False)
+    unverified = UserProperty.objects.filter(is_verified=False, verification_status='pending')
     
     data = []
     for up in unverified:
@@ -152,7 +152,8 @@ def get_unverified_properties(request):
             "property_id": up.property.id,
             "property_title": up.property.title,
             "property_location": up.property.location,
-            "document_url": document.attachment.url if document else None
+            "document_url": document.attachment.url if document else None,
+            "verification_status": up.verification_status
         })
     
     return JsonResponse(data, safe=False)
@@ -167,9 +168,30 @@ def verify_property(request):
 
         user_property = UserProperty.objects.get(id=user_property_id)
         user_property.is_verified = True
+        user_property.verification_status = 'approved'
         user_property.save()
 
         return JsonResponse({'message': 'Property ownership verified successfully.'})
+
+    except UserProperty.DoesNotExist:
+        return JsonResponse({'error': 'UserProperty not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def reject_property(request):
+    try:
+        data = json.loads(request.body)
+        user_property_id = data.get('user_property_id')
+
+        user_property = UserProperty.objects.get(id=user_property_id)
+        user_property.is_verified = False
+        user_property.verification_status = 'rejected'
+        user_property.is_active = False  # optional: to hide from any UI
+        user_property.save()
+
+        return JsonResponse({'message': 'Property rejected ,documents not correct'})
 
     except UserProperty.DoesNotExist:
         return JsonResponse({'error': 'UserProperty not found.'}, status=404)
