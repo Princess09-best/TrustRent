@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import User
+from .models import User, Property
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.timezone import now
@@ -26,85 +26,83 @@ def register_user(request):
         response["Access-Control-Allow-Headers"] = "Content-Type"
         return response
 
-    if request.method == 'POST':
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        # Validate required fields
+        required_fields = ['firstname', 'lastname', 'email', 'phone_number', 'password', 'role', 'id_type', 'id_value']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({'error': f'{field} is required'}, status=400)
+        
+        # Validate email format
         try:
-            data = json.loads(request.body)
-            # Validate required fields
-            required_fields = ['firstname', 'lastname', 'email', 'phone_number', 'password', 'role', 'id_type', 'id_value']
-            for field in required_fields:
-                if field not in data:
-                    return JsonResponse({'error': f'{field} is required'}, status=400)
-            
-            # Validate email format
-            try:
-                validate_email(data['email'])
-            except ValidationError:
-                return JsonResponse({'error': 'Invalid email format'}, status=400)
+            validate_email(data['email'])
+        except ValidationError:
+            return JsonResponse({'error': 'Invalid email format'}, status=400)
 
-            # Check if email already exists
-            if User.objects.filter(email=data['email']).exists():
-                return JsonResponse({'error': 'Email already registered'}, status=400)
+        # Check if email already exists
+        if User.objects.filter(email=data['email']).exists():
+            return JsonResponse({'error': 'Email already registered'}, status=400)
 
-            # Validate phone number format (Ghana format: +233XXXXXXXXX)
-            phone_pattern = r'^\+233[0-9]{9}$'
-            if not re.match(phone_pattern, data['phone_number']):
-                return JsonResponse({'error': 'Invalid phone number format. Use format: +233XXXXXXXXX'}, status=400)
+        # Validate phone number format (Ghana format: +233XXXXXXXXX)
+        phone_pattern = r'^\+233[0-9]{9}$'
+        if not re.match(phone_pattern, data['phone_number']):
+            return JsonResponse({'error': 'Invalid phone number format. Use format: +233XXXXXXXXX'}, status=400)
 
-            # Validate password strength
-            if len(data['password']) < 8:
-                return JsonResponse({'error': 'Password must be at least 8 characters long'}, status=400)
+        # Validate password strength
+        if len(data['password']) < 8:
+            return JsonResponse({'error': 'Password must be at least 8 characters long'}, status=400)
 
-            # Validate role
-            valid_roles = ['property_owner', 'renter']
-            if data['role'] not in valid_roles:
-                return JsonResponse({'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}, status=400)
+        # Validate role
+        valid_roles = ['property_owner', 'renter']
+        if data['role'] not in valid_roles:
+            return JsonResponse({'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}, status=400)
 
-            # Validate ID type and value
-            valid_id_types = ['Ghana Card', 'Passport']
-            if data['id_type'] not in valid_id_types:
-                return JsonResponse({'error': f'Invalid ID type. Must be one of: {", ".join(valid_id_types)}'}, status=400)
+        # Validate ID type and value
+        valid_id_types = ['Ghana Card', 'Passport']
+        if data['id_type'] not in valid_id_types:
+            return JsonResponse({'error': f'Invalid ID type. Must be one of: {", ".join(valid_id_types)}'}, status=400)
 
-            # Validate ID value format
-            id_patterns = {
-                'Ghana Card': r'^GHA-\d{9}-\d$',
-                'Passport': r'^[A-Z]{1}\d{7}$'
-            }
-            if not re.match(id_patterns[data['id_type']], data['id_value']):
-                return JsonResponse({
-                    'error': f'Invalid {data["id_type"]} format. ' + 
-                            ('Use format: GHA-XXXXXXXXX-X' if data['id_type'] == 'Ghana Card' else 'Use format: LXXXXXXX')
-                }, status=400)
-
-            # Hash the password before saving
-            hashed_password = make_password(data['password'])
-
-            user = User.objects.create(
-                firstname=data['firstname'],
-                lastname=data['lastname'],
-                email=data['email'],
-                phone_number=data['phone_number'],
-                password_hash=hashed_password,
-                role=data['role'],
-                id_type=data['id_type'],
-                id_value=data['id_value'],
-                is_verified=False
-            )
+        # Validate ID value format
+        id_patterns = {
+            'Ghana Card': r'^GHA-\d{9}-\d$',
+            'Passport': r'^[A-Z]{1}\d{7}$'
+        }
+        if not re.match(id_patterns[data['id_type']], data['id_value']):
             return JsonResponse({
-                'message': 'Registration successful! Please wait for account verification.',
-                'user_id': user.id,
-                'is_verified': user.is_verified
-            }, status=201)
-            
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+                'error': f'Invalid {data["id_type"]} format. ' + 
+                        ('Use format: GHA-XXXXXXXXX-X' if data['id_type'] == 'Ghana Card' else 'Use format: LXXXXXXX')
+            }, status=400)
 
-    return JsonResponse({'error': 'Method not allowed'}, status=405)
+        # Hash the password before saving
+        hashed_password = make_password(data['password'])
 
+        user = User.objects.create(
+            firstname=data['firstname'],
+            lastname=data['lastname'],
+            email=data['email'],
+            phone_number=data['phone_number'],
+            password_hash=hashed_password,
+            role=data['role'],
+            id_type=data['id_type'],
+            id_value=data['id_value'],
+            is_verified=False
+        )
+        return JsonResponse({
+            'message': 'Registration successful! Please wait for account verification.',
+            'user_id': user.id,
+            'is_verified': user.is_verified
+        }, status=201)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 # Logging in a user
-
 @csrf_exempt
 def login_user(request):
     if request.method != 'POST':
@@ -154,7 +152,6 @@ def login_user(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 #function for admin to get all unverified users
 @csrf_exempt
@@ -219,23 +216,39 @@ def create_property(request):
     try:
         data = json.loads(request.body)
 
-        required_fields = ['title', 'property_type', 'description', 'location', 'price', 'owner_id']
+        required_fields = ['title', 'property_type', 'description', 'location', 'owner_id']
         missing = [f for f in required_fields if f not in data]
         if missing:
             return JsonResponse({'error': f'Missing fields: {", ".join(missing)}'}, status=400)
 
-        # Create Property
+        # Validate property type
+        valid_property_types = [choice[0] for choice in Property.PROPERTY_TYPE_CHOICES]
+        if data['property_type'] not in valid_property_types:
+            return JsonResponse({
+                'error': f'Invalid property type. Must be one of: {", ".join(valid_property_types)}'
+            }, status=400)
+
+        # Check if property with same title and location exists
         with connections['core'].cursor() as cursor:
             cursor.execute("""
+                SELECT id FROM core_property 
+                WHERE title = %s AND location = %s
+                """, [data['title'], data['location']])
+            if cursor.fetchone():
+                return JsonResponse({
+                    'error': 'A property with this title and location already exists'
+                }, status=400)
+
+            # Create Property
+            cursor.execute("""
                 INSERT INTO core_property 
-                (title, property_type, description, location, price, status, created_at) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                (title, property_type, description, location, status, created_at) 
+                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
                 """, [
                     data['title'],
                     data['property_type'],
                     data['description'],
                     data['location'],
-                    data['price'],
                     'unlisted',
                     timezone.now()
                 ])
@@ -264,6 +277,10 @@ def create_property(request):
         })
 
     except Exception as e:
+        if 'unique_property_title_location' in str(e):
+            return JsonResponse({
+                'error': 'A property with this title and location already exists'
+            }, status=400)
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -465,6 +482,61 @@ def upload_property_image(request):
             'message': 'Image uploaded successfully',
             'image_id': image_id
         })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_all_properties(request):
+    try:
+        with connections['core'].cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    p.id,
+                    p.title,
+                    p.property_type,
+                    p.description,
+                    p.location,
+                    p.status,
+                    p.created_at,
+                    u.firstname,
+                    u.lastname,
+                    up.is_verified,
+                    pi.image as property_image,
+                    pl.price as listing_price,
+                    pl.listing_type
+                FROM 
+                    core_property p
+                    JOIN core_userproperty up ON p.id = up.property_id
+                    JOIN core_user u ON up.owner_id = u.id
+                    LEFT JOIN core_propertyimage pi ON p.id = pi.property_id AND pi.is_active = true
+                    LEFT JOIN ops_propertylisting pl ON up.id = pl.user_property_id AND pl.is_active = true
+                WHERE 
+                    up.is_verified = true 
+                    AND up.is_active = true
+                    AND p.status != 'unlisted'
+            """)
+            rows = cursor.fetchall()
+
+        properties = []
+        for row in rows:
+            properties.append({
+                "id": row[0],
+                "title": row[1],
+                "property_type": row[2],
+                "description": row[3],
+                "location": row[4],
+                "status": row[5],
+                "created_at": row[6].isoformat() if row[6] else None,
+                "owner_name": f"{row[7]} {row[8]}",
+                "is_verified": row[9],
+                "property_image": row[10] if row[10] else None,
+                "price": float(row[11]) if row[11] else None,
+                "listing_type": row[12]
+            })
+        
+        return JsonResponse(properties, safe=False)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

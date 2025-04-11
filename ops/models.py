@@ -14,6 +14,7 @@ class PropertyListing(models.Model):
     # Store only the ID references
     user_property_id = models.IntegerField()
     listing_type = models.CharField(max_length=10, choices=LISTING_TYPE_CHOICES)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

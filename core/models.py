@@ -44,13 +44,10 @@ class Property(models.Model):
     ]
 
     title = models.CharField(max_length=100)
-    property_type = models.CharField(max_length=20, 
-     choices=PROPERTY_TYPE_CHOICES)
+    property_type = models.CharField(max_length=20, choices=PROPERTY_TYPE_CHOICES)
     description = models.TextField()
-    location = models.CharField(max_length=150)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, 
-     default='available')
+    location = models.CharField(max_length=150, help_text="Enter the full address including street number, street name, city/town, and GPS coordinates if available.")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unlisted')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
