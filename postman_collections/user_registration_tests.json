@@ -1,0 +1,210 @@
+{
+	"info": {
+		"_postman_id": "1234-5678-abcd-efgh",
+		"name": "TrustRent - User Registration Tests",
+		"description": "Test cases for user registration endpoint",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Valid User Registration",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"valid.user@example.com\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"securepassword123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with valid data"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Email Format",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"invalid-email\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"securepassword123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with invalid email format"
+			},
+			"response": []
+		},
+		{
+			"name": "Missing Required Field",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"securepassword123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with missing email field"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Phone Number",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"phone.test@example.com\",\n    \"phone_number\": \"123\",\n    \"password\": \"securepassword123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with invalid phone number format"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Ghana Card Format",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"ghana.card@example.com\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"securepassword123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"123\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with invalid Ghana Card format"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Passport Format",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"passport.test@example.com\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"securepassword123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Passport\",\n    \"id_value\": \"123\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with invalid Passport format"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Role",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"role.test@example.com\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"securepassword123\",\n    \"role\": \"land_commission\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with land_commission role (should be rejected as it's admin-only)"
+			},
+			"response": []
+		},
+		{
+			"name": "Weak Password",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"password.test@example.com\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/register/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "register", ""]
+				},
+				"description": "Test registration with weak password"
+			},
+			"response": []
+		}
+	]
+} 

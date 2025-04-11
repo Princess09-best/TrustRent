@@ -1,0 +1,135 @@
+{
+	"info": {
+		"_postman_id": "9876-5432-abcd-efgh",
+		"name": "TrustRent - User Login Tests",
+		"description": "Test cases for user login endpoint",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Valid Login (Verified User)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"valid.user@example.com\",\n    \"password\": \"securepassword123\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/login/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "login", ""]
+				},
+				"description": "Test login with valid credentials for a verified user"
+			},
+			"response": []
+		},
+		{
+			"name": "Unverified User Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"unverified.user@example.com\",\n    \"password\": \"securepassword123\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/login/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "login", ""]
+				},
+				"description": "Test login with unverified account"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Email",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"nonexistent@example.com\",\n    \"password\": \"securepassword123\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/login/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "login", ""]
+				},
+				"description": "Test login with non-existent email"
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Password",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"valid.user@example.com\",\n    \"password\": \"wrongpassword123\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/login/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "login", ""]
+				},
+				"description": "Test login with incorrect password"
+			},
+			"response": []
+		},
+		{
+			"name": "Missing Required Fields",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"valid.user@example.com\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/user/login/",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "user", "login", ""]
+				},
+				"description": "Test login with missing password field"
+			},
+			"response": []
+		}
+	]
+} 

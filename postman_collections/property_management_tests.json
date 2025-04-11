@@ -1,0 +1,283 @@
+{
+    "info": {
+        "_postman_id": "trustrent-property-tests",
+        "name": "TrustRent Property Management Tests",
+        "description": "Collection of API tests for property management functionality",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Property Creation",
+            "item": [
+                {
+                    "name": "Create Property - Success",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Test Property\",\n    \"property_type\": \"1_bedroom\",\n    \"description\": \"A test property for API testing\",\n    \"location\": \"Test Location\",\n    \"price\": 1000.00,\n    \"owner_id\": \"{{user_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/create/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "create", ""]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Property - Missing Fields",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Test Property\",\n    \"property_type\": \"1_bedroom\"\n}"
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/create/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "create", ""]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Document Upload",
+            "item": [
+                {
+                    "name": "Upload Document - Success",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "property_id",
+                                    "value": "{{property_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "attachment",
+                                    "type": "file",
+                                    "src": "test_files/sample_deed.pdf"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/upload-document/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "upload-document", ""]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Upload Document - Invalid File Type",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "property_id",
+                                    "value": "{{property_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "attachment",
+                                    "type": "file",
+                                    "src": "test_files/invalid.txt"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/upload-document/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "upload-document", ""]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Property Verification",
+            "item": [
+                {
+                    "name": "Get Unverified Properties",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/unverified/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "unverified", ""]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Verify Property",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/verify/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "verify", ""]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reject Property",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/reject/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "reject", ""]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Property Image Upload",
+            "item": [
+                {
+                    "name": "Upload Property Image - Success",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "property_id",
+                                    "value": "{{property_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "image",
+                                    "type": "file",
+                                    "src": "test_files/test.jpg"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "http://127.0.0.1:8000/api/property/upload-image/",
+                            "protocol": "http",
+                            "host": ["127.0.0.1"],
+                            "port": "8000",
+                            "path": ["api", "property", "upload-image", ""]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "user_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "property_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "user_property_id",
+            "value": "",
+            "type": "string"
+        }
+    ]
+} 
