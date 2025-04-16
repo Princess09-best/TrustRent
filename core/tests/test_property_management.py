@@ -52,9 +52,8 @@ class PropertyManagementTests(TestCase):
             json.dumps({
                 'title': 'Test Property',
                 'description': 'A test property listing',
-                'location': 'Test Location',
-                'property_type': 'LAND',
-                'price': 1000000,
+                'location': 'Test Location, Street 123, Accra, GPS: GA-123-4567',
+                'property_type': '1_bedroom',
                 'owner_id': self.owner_id
             }),
             content_type='application/json'
@@ -74,7 +73,6 @@ class PropertyManagementTests(TestCase):
                 'title': 'Test Property',
                 'description': 'A test property listing',
                 # Missing location and property_type
-                'price': 1000000,
                 'owner_id': self.owner_id
             }),
             content_type='application/json'
@@ -118,7 +116,7 @@ class PropertyManagementTests(TestCase):
                 }
             )
         
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()['message'], 'Document uploaded successfully.')
 
     def test_upload_invalid_document(self):

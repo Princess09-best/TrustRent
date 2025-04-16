@@ -43,7 +43,27 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'ops',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+# JWT settings
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -87,6 +107,9 @@ DATABASES = {
         'PASSWORD': 'INcorrect09$$9',
         'HOST': 'localhost',
         'PORT': '5432',
+        'TEST': {
+            'MIRROR': 'default'
+        }
     },
     'ops': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -95,6 +118,9 @@ DATABASES = {
         'PASSWORD': 'INcorrect09$$9',
         'HOST': 'localhost',
         'PORT': '5432',
+        'TEST': {
+            'MIRROR': 'default'
+        }
     },
     'ledger': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -103,6 +129,9 @@ DATABASES = {
         'PASSWORD': 'INcorrect09$$9',
         'HOST': 'localhost',
         'PORT': '5432',
+        'TEST': {
+            'MIRROR': 'default'
+        }
     },
     
     'default': {
@@ -112,6 +141,9 @@ DATABASES = {
         'PASSWORD': 'INcorrect09$$9',
         'HOST': 'localhost',
         'PORT': '5432',
+        'TEST': {
+            'NAME': 'test_trustrent_db'
+        }
     }
 }
 

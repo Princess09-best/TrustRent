@@ -1,175 +1,525 @@
 {
     "info": {
-        "_postman_id": "trustrent-listing-tests",
-        "name": "TrustRent Property Listing Tests",
-        "description": "Collection of API tests for property listing functionality",
+        "_postman_id": "c8e9f3d2-5b6a-4f8c-9d1e-7a8b2c3d4e5f",
+        "name": "Property Listing Tests",
+        "description": "Tests for property listing endpoints including creation, update, and retrieval",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
         {
             "name": "Create Property Listing",
-            "item": [
+            "event": [
                 {
-                    "name": "Create Listing - Success",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "if (!pm.environment.get('user_property_id')) {",
+                            "    throw new Error('user_property_id environment variable is required');",
+                            "}"
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"listing_type\": \"rent\"\n}"
-                        },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/listing/create/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "listing", "create", ""]
-                        }
-                    },
-                    "response": []
+                        "type": "text/javascript"
+                    }
                 },
                 {
-                    "name": "Create Listing - Missing Fields",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 201', function() {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test('Response contains success message', function() {",
+                            "    const responseData = pm.response.json();",
+                            "    pm.expect(responseData.message).to.eql('Property listing created successfully');",
+                            "});",
+                            "",
+                            "pm.test('Listing ID is present in header', function() {",
+                            "    const listingId = pm.response.headers.get('X-Listing-Id');",
+                            "    pm.expect(listingId).to.exist;",
+                            "    pm.environment.set('listing_id', listingId);",
+                            "});"
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/listing/create/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "listing", "create", ""]
-                        }
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
                     },
-                    "response": []
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"listing_type\": \"rent\",\n    \"price\": 1500\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/listing/create/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "create", ""]
+                }
+            }
+        },
+        {
+            "name": "Update Property Listing - Success",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "if (!pm.environment.get('listing_id')) {",
+                            "    throw new Error('listing_id environment variable is not set. Please run the Create Property Listing test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Listing updated successfully\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.message).to.equal('Listing updated successfully');",
+                            "    pm.expect(jsonData.price).to.equal(1600.00);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"price\": 1600.00\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/listing/{{listing_id}}/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "{{listing_id}}", ""]
+                }
+            }
+        },
+        {
+            "name": "Get Property Listing - Success",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "if (!pm.environment.get('listing_id')) {",
+                            "    throw new Error('listing_id environment variable is not set. Please run the Create Property Listing test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Listing details are correct\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('price');",
+                            "    pm.expect(jsonData).to.have.property('listing_type');",
+                            "    pm.expect(jsonData).to.have.property('property');",
+                            "    pm.expect(jsonData.property).to.have.property('title');",
+                            "    pm.expect(jsonData.property).to.have.property('type');",
+                            "    pm.expect(jsonData.property).to.have.property('description');",
+                            "    pm.expect(jsonData.property).to.have.property('location');",
+                            "    pm.expect(jsonData.listing_type).to.equal('rent');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/listing/{{listing_id}}/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "{{listing_id}}"]
+                }
+            }
+        },
+        {
+            "name": "Deactivate Property Listing - Success",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "if (!pm.environment.get('listing_id')) {",
+                            "    throw new Error('listing_id environment variable is not set. Please run the Create Property Listing test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Listing deactivated successfully\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.message).to.equal('Property listing deactivated successfully');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"deactivation_reason\": \"Property rented out\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/listing/{{listing_id}}/deactivate/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "{{listing_id}}", "deactivate", ""]
+                }
+            }
+        },
+        {
+            "name": "Reactivate Property Listing - Success",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "if (!pm.environment.get('listing_id')) {",
+                            "    throw new Error('listing_id environment variable is not set. Please run the Create Property Listing test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Listing reactivated successfully\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.message).to.equal('Property listing reactivated successfully');",
+                            "    pm.expect(jsonData.is_active).to.be.true;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"reactivation_reason\": \"Property available again\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/listing/{{listing_id}}/reactivate/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "{{listing_id}}", "reactivate", ""]
+                }
+            }
+        },
+        {
+            "name": "Cleanup - Deactivate Existing Listing",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "if (!pm.environment.get('listing_id')) {",
+                            "    throw new Error('listing_id environment variable is not set. Please run the Create Property Listing test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/listing/{{listing_id}}/deactivate/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "{{listing_id}}", "deactivate", ""]
+                },
+                "description": "Deactivate any existing listing before running tests"
+            }
+        },
+        {
+            "name": "Create Property Listing - Missing Fields",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"listing_type\": \"rent\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/listing/create/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "create"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has missing fields error\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('error');",
+                            "    pm.expect(jsonData.error).to.include('Missing required fields');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
                 }
             ]
         },
         {
-            "name": "Get Properties",
-            "item": [
+            "name": "Create Property Listing - Duplicate Check",
+            "event": [
                 {
-                    "name": "Get All Properties",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/properties/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "properties", ""]
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Get Properties with Filters",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/properties/?location=Accra&type=1_bedroom&min_price=500&max_price=2000&listing_type=rent&search=apartment&sort_by=price&sort_order=asc&page=1&per_page=10",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "properties", ""],
-                            "query": [
-                                {
-                                    "key": "location",
-                                    "value": "Accra"
-                                },
-                                {
-                                    "key": "type",
-                                    "value": "1_bedroom"
-                                },
-                                {
-                                    "key": "min_price",
-                                    "value": "500"
-                                },
-                                {
-                                    "key": "max_price",
-                                    "value": "2000"
-                                },
-                                {
-                                    "key": "listing_type",
-                                    "value": "rent"
-                                },
-                                {
-                                    "key": "search",
-                                    "value": "apartment"
-                                },
-                                {
-                                    "key": "sort_by",
-                                    "value": "price"
-                                },
-                                {
-                                    "key": "sort_order",
-                                    "value": "asc"
-                                },
-                                {
-                                    "key": "page",
-                                    "value": "1"
-                                },
-                                {
-                                    "key": "per_page",
-                                    "value": "10"
-                                }
-                            ]
-                        }
-                    },
-                    "response": []
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has duplicate listing error\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('error');",
+                            "    pm.expect(jsonData.error).to.equal('An active listing already exists for this property');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
                 }
-            ]
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"listing_type\": \"rent\",\n    \"price\": 1600.00\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/listing/create/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listing", "create"]
+                }
+            }
         },
         {
-            "name": "Get Property Detail",
-            "item": [
+            "name": "Get All Listings",
+            "event": [
                 {
-                    "name": "Get Property Detail - Success",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/properties/{{property_id}}/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "properties", "{{property_id}}", ""]
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Get Property Detail - Not Found",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/properties/999999/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "properties", "999999", ""]
-                        }
-                    },
-                    "response": []
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has correct structure\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('listings').to.be.an('array');",
+                            "    pm.expect(jsonData).to.have.property('pagination');",
+                            "    pm.expect(jsonData).to.have.property('filters');",
+                            "});",
+                            "",
+                            "pm.test(\"Listings have required fields\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    if (jsonData.listings.length > 0) {",
+                            "        const listing = jsonData.listings[0];",
+                            "        pm.expect(listing).to.have.property('price');",
+                            "        pm.expect(listing).to.have.property('listing_type');",
+                            "        pm.expect(listing).to.have.property('title');",
+                            "        pm.expect(listing).to.have.property('property_type');",
+                            "        pm.expect(listing).to.have.property('location');",
+                            "        pm.expect(listing).to.have.property('owner');",
+                            "        pm.expect(listing.owner).to.have.property('name');",
+                            "        pm.expect(listing.owner).to.have.property('phone');",
+                            "    }",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
                 }
-            ]
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/listings/?page=1&per_page=10",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listings", ""],
+                    "query": [
+                        {
+                            "key": "page",
+                            "value": "1"
+                        },
+                        {
+                            "key": "per_page",
+                            "value": "10"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Filtered Listings",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Filtered results match criteria\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    if (jsonData.listings.length > 0) {",
+                            "        jsonData.listings.forEach(function(listing) {",
+                            "            pm.expect(listing.listing_type).to.equal('rent');",
+                            "            pm.expect(listing.price).to.be.at.least(1000);",
+                            "            pm.expect(listing.price).to.be.at.most(2000);",
+                            "        });",
+                            "    }",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/listings/?listing_type=rent&min_price=1000&max_price=2000&sort_by=price&sort_order=asc",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "listings", ""],
+                    "query": [
+                        {
+                            "key": "listing_type",
+                            "value": "rent"
+                        },
+                        {
+                            "key": "min_price",
+                            "value": "1000"
+                        },
+                        {
+                            "key": "max_price",
+                            "value": "2000"
+                        },
+                        {
+                            "key": "sort_by",
+                            "value": "price"
+                        },
+                        {
+                            "key": "sort_order",
+                            "value": "asc"
+                        }
+                    ]
+                }
+            }
         }
     ],
     "event": [
@@ -194,13 +544,8 @@
     ],
     "variable": [
         {
-            "key": "user_property_id",
-            "value": "",
-            "type": "string"
-        },
-        {
-            "key": "property_id",
-            "value": "",
+            "key": "base_url",
+            "value": "http://localhost:8000",
             "type": "string"
         }
     ]

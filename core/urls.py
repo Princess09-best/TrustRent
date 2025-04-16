@@ -9,7 +9,9 @@ from .views import (
     get_unverified_properties,
     verify_property,
     reject_property,
-    upload_property_image
+    upload_property_image,
+    get_all_properties,
+    get_property_detail
 )
 
 urlpatterns = [
@@ -19,9 +21,11 @@ urlpatterns = [
     path('user/verify/', verify_user, name='verify_user'),
     
     path('property/create/', create_property, name='create_property'),
+    path('property/<int:property_id>/', get_property_detail, name='get_property_detail'),
     path('property/upload-document/', upload_document, name='upload_document'),
     path('property/upload-image/', upload_property_image, name='upload_property_image'),
     path('property/unverified/', get_unverified_properties, name='get_unverified_properties'),
     path('property/verify/', verify_property, name='verify_property'),
     path('property/reject/', reject_property, name='reject_property'),
+    path('properties/', get_all_properties, name='get_all_properties'),
 ]

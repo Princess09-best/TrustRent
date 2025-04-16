@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 # User Model
 class User(models.Model):
@@ -82,9 +83,14 @@ class UserProperty(models.Model):
 
     transaction_hash = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    last_verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.owner.firstname} owns {self.property.title} (Active: {self.is_active})"
+
+    class Meta:
+        db_table = 'core_userproperty'
+        unique_together = ('owner', 'property')
 
 
 # Property Document Model
@@ -96,3 +102,17 @@ class PropertyDocument(models.Model):
 
     def __str__(self):
         return f"Title Deed for {self.user_property.property.title}"
+
+
+class VerificationHistory(models.Model):
+    user_property = models.ForeignKey(UserProperty, on_delete=models.CASCADE)
+    previous_status = models.CharField(max_length=20)
+    new_status = models.CharField(max_length=20)
+    changed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'core_verificationhistory'
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.user_property} changed from {self.previous_status} to {self.new_status} at {self.changed_at}"

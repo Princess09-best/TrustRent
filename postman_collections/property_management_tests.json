@@ -1,246 +1,835 @@
 {
     "info": {
-        "_postman_id": "trustrent-property-tests",
-        "name": "TrustRent Property Management Tests",
-        "description": "Collection of API tests for property management functionality",
+        "_postman_id": "property-management-tests",
+        "name": "Property Management Tests",
+        "description": "Collection for testing property management endpoints",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
         {
-            "name": "Property Creation",
-            "item": [
-                {
-                    "name": "Create Property - Success",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"title\": \"Test Property\",\n    \"property_type\": \"1_bedroom\",\n    \"description\": \"A test property for API testing\",\n    \"location\": \"Test Location\",\n    \"price\": 1000.00,\n    \"owner_id\": \"{{user_id}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/create/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "create", ""]
-                        }
+            "name": "Create Property - Missing Required Fields",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
                     },
-                    "response": []
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"title\": \"Test Property\"\n}"
                 },
+                "url": {
+                    "raw": "{{base_url}}/api/property/create/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "create", ""]
+                }
+            },
+            "event": [
                 {
-                    "name": "Create Property - Missing Fields",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has error message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('error');",
+                            "    pm.expect(jsonData.error).to.include('Missing fields: property_type, descri');",
+                            "});"
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"title\": \"Test Property\",\n    \"property_type\": \"1_bedroom\"\n}"
-                        },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/create/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "create", ""]
-                        }
-                    },
-                    "response": []
+                        "type": "text/javascript"
+                    }
                 }
             ]
         },
         {
-            "name": "Document Upload",
-            "item": [
+            "name": "Create Property - Success",
+            "event": [
                 {
-                    "name": "Upload Document - Success",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "formdata",
-                            "formdata": [
-                                {
-                                    "key": "user_id",
-                                    "value": "{{user_id}}",
-                                    "type": "text"
-                                },
-                                {
-                                    "key": "property_id",
-                                    "value": "{{property_id}}",
-                                    "type": "text"
-                                },
-                                {
-                                    "key": "attachment",
-                                    "type": "file",
-                                    "src": "test_files/sample_deed.pdf"
-                                }
-                            ]
-                        },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/upload-document/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "upload-document", ""]
-                        }
-                    },
-                    "response": []
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Generate timestamp and random number for unique property title and location",
+                            "const timestamp = new Date().getTime();",
+                            "const random = Math.floor(Math.random() * 10000);",
+                            "pm.variables.set('timestamp', timestamp);",
+                            "pm.variables.set('random', random);",
+                            "console.log('Generated timestamp:', timestamp);",
+                            "console.log('Generated random number:', random);"
+                        ],
+                        "type": "text/javascript"
+                    }
                 },
                 {
-                    "name": "Upload Document - Invalid File Type",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "formdata",
-                            "formdata": [
-                                {
-                                    "key": "user_id",
-                                    "value": "{{user_id}}",
-                                    "type": "text"
-                                },
-                                {
-                                    "key": "property_id",
-                                    "value": "{{property_id}}",
-                                    "type": "text"
-                                },
-                                {
-                                    "key": "attachment",
-                                    "type": "file",
-                                    "src": "test_files/invalid.txt"
-                                }
-                            ]
-                        },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/upload-document/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "upload-document", ""]
-                        }
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 201\", function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has success message and status\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData).to.have.property('status');",
+                            "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                            "});",
+                            "",
+                            "// Extract property_id from header and save it",
+                            "const propertyId = pm.response.headers.get('X-Resource-Id');",
+                            "if (propertyId) {",
+                            "    pm.environment.set('property_id', propertyId);",
+                            "    console.log('Set property_id from header:', propertyId);",
+                            "} else {",
+                            "    console.error('Property ID not found in response headers');",
+                            "}",
+                            "",
+                            "// Extract and save user_property_id",
+                            "const userPropertyId = pm.response.headers.get('X-UserProperty-Id');",
+                            "if (userPropertyId) {",
+                            "    pm.environment.set('user_property_id', userPropertyId);",
+                            "    console.log('Set user_property_id from header:', userPropertyId);",
+                            "} else {",
+                            "    console.error('UserProperty ID not found in response headers');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
                     },
-                    "response": []
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"title\": \"Modern Apartment {{timestamp}}-{{random}}\",\n    \"description\": \"A beautiful modern apartment\",\n    \"property_type\": \"2_bedroom\",\n    \"location\": \"123 Main St Unit {{timestamp}}-{{random}}\",\n    \"city\": \"Accra\",\n    \"country\": \"Ghana\",\n    \"num_bedrooms\": 2,\n    \"num_bathrooms\": 1,\n    \"size\": 800,\n    \"owner_id\": {{user_id}},\n    \"is_verified\": false\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/create/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "create", ""]
+                }
+            }
+        },
+        {
+            "name": "Upload Property Document - Invalid File Type",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "document",
+                            "type": "file",
+                            "src": "./test_files/test_document.txt"
+                        },
+                        {
+                            "key": "document_type",
+                            "value": "title_deed",
+                            "type": "text"
+                        },
+                        {
+                            "key": "property_id",
+                            "value": "{{property_id}}",
+                            "type": "text"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/upload-document/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "upload-document", ""]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has error message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('error');",
+                            "    pm.expect(jsonData.error).to.include('Missing required fields');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
                 }
             ]
         },
         {
-            "name": "Property Verification",
-            "item": [
+            "name": "Upload Property Document - Success",
+            "event": [
                 {
-                    "name": "Get Unverified Properties",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/unverified/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "unverified", ""]
-                        }
-                    },
-                    "response": []
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Log current environment variables",
+                            "console.log('Current environment variables:');",
+                            "console.log('user_id:', pm.environment.get('user_id'));",
+                            "console.log('property_id:', pm.environment.get('property_id'));",
+                            "console.log('auth_token:', pm.environment.get('auth_token'));",
+                            "",
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_id')) {",
+                            "    throw new Error('user_id environment variable is not set. Please run the registration and login tests first.');",
+                            "}",
+                            "if (!pm.environment.get('property_id')) {",
+                            "    throw new Error('property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}",
+                            "if (!pm.environment.get('auth_token')) {",
+                            "    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
                 },
                 {
-                    "name": "Verify Property",
-                    "request": {
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 201\", function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has document upload confirmation\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData).to.have.property('status');",
+                            "    pm.expect(jsonData.status).to.equal('pending_review');",
+                            "});"
                         ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "attachment",
+                            "type": "file",
+                            "src": "./test_files/sample_deed.pdf",
+                            "disabled": false
                         },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/verify/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "verify", ""]
+                        {
+                            "key": "user_id",
+                            "value": "{{user_id}}",
+                            "type": "text"
+                        },
+                        {
+                            "key": "property_id",
+                            "value": "{{property_id}}",
+                            "type": "text"
                         }
-                    },
-                    "response": []
+                    ]
                 },
-                {
-                    "name": "Reject Property",
-                    "request": {
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                "url": {
+                    "raw": "{{base_url}}/api/property/upload-document/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "upload-document", ""]
+                }
+            }
+        },
+        {
+            "name": "Upload Property Image - Invalid File Type",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "property_id",
+                            "value": "{{property_id}}",
+                            "type": "text"
                         },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/reject/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "reject", ""]
+                        {
+                            "key": "user_id",
+                            "value": "{{user_id}}",
+                            "type": "text"
+                        },
+                        {
+                            "key": "image",
+                            "type": "file",
+                            "src": "./test_files/test_document.pdf"
                         }
-                    },
-                    "response": []
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/upload-image/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "upload-image", ""]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has error message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('error');",
+                            "    pm.expect(jsonData.error).to.satisfy(function(error) {",
+                            "        return error.includes('Invalid image type') || error.includes('Image size too large');",
+                            "    });",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
                 }
             ]
         },
         {
-            "name": "Property Image Upload",
-            "item": [
-                {
-                    "name": "Upload Property Image - Success",
-                    "request": {
-                        "method": "POST",
-                        "header": [],
-                        "body": {
-                            "mode": "formdata",
-                            "formdata": [
-                                {
-                                    "key": "user_id",
-                                    "value": "{{user_id}}",
-                                    "type": "text"
-                                },
-                                {
-                                    "key": "property_id",
-                                    "value": "{{property_id}}",
-                                    "type": "text"
-                                },
-                                {
-                                    "key": "image",
-                                    "type": "file",
-                                    "src": "test_files/test.jpg"
-                                }
-                            ]
+            "name": "Upload Property Image - Success",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "property_id",
+                            "value": "{{property_id}}",
+                            "type": "text"
                         },
-                        "url": {
-                            "raw": "http://127.0.0.1:8000/api/property/upload-image/",
-                            "protocol": "http",
-                            "host": ["127.0.0.1"],
-                            "port": "8000",
-                            "path": ["api", "property", "upload-image", ""]
+                        {
+                            "key": "user_id",
+                            "value": "{{user_id}}",
+                            "type": "text"
+                        },
+                        {
+                            "key": "image",
+                            "type": "file",
+                            "src": "./test_files/test_image.png"
                         }
-                    },
-                    "response": []
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/upload-image/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "upload-image", ""]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has image upload confirmation\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData).to.have.property('status');",
+                            "    pm.expect(jsonData.status).to.equal('processing');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
                 }
             ]
+        },
+        {
+            "name": "Verify Property - Success (Approve)",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_property_id')) {",
+                            "    throw new Error('user_property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has success message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": {{user_property_id}},\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/verify/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "verify", ""]
+                },
+                "description": "Test successful property verification approval"
+            }
+        },
+        {
+            "name": "Verify Property - Success (Reject)",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_property_id')) {",
+                            "    throw new Error('user_property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has rejection message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData.message).to.equal('Property ownership verification rejected. Please upload correct documents and resubmit for verification.');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": {{user_property_id}},\n    \"verification_status\": \"rejected\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/verify/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "verify", ""]
+                },
+                "description": "Test property verification rejection"
+            }
+            },
+        {
+            "name": "Verify Property - Invalid Status",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_property_id')) {",
+                            "    throw new Error('user_property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has error message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('error');",
+                            "    pm.expect(jsonData.error).to.equal('Invalid verification status. Must be one of: approved, rejected');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": {{user_property_id}},\n    \"verification_status\": \"invalid_status\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/verify/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "verify", ""]
+                },
+                "description": "Test property verification with invalid status"
+            }
+        },
+        {
+            "name": "Upload Property Images",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "images",
+                            "type": "file",
+                            "src": ["./test_files/image1.jpg", "./test_files/image2.jpg"]
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/{{property_id}}/images/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "{{property_id}}", "images", ""]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 201\", function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test(\"Images upload successful\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.be.an('array');",
+                            "    pm.expect(jsonData[0]).to.have.property('id');",
+                            "    pm.expect(jsonData[0]).to.have.property('image_url');",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Verify Property",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"is_verified\": true,\n    \"verification_notes\": \"All documents checked and verified\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/property/{{property_id}}/verify/",
+                    "host": ["{{base_url}}"],
+                    "path": ["property", "{{property_id}}", "verify", ""]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Property verification successful\", function () {",
+                            "    const jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('is_verified');",
+                            "    pm.expect(jsonData.is_verified).to.equal(true);",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Upload Property Document - Resubmission After Rejection",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_id')) {",
+                            "    throw new Error('user_id environment variable is not set. Please run the registration and login tests first.');",
+                            "}",
+                            "if (!pm.environment.get('property_id')) {",
+                            "    throw new Error('property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}",
+                            "if (!pm.environment.get('auth_token')) {",
+                            "    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 201\", function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has resubmission confirmation\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData.message).to.equal('New document uploaded successfully. Your property has been resubmitted for verification.');",
+                            "    pm.expect(jsonData.status).to.equal('pending_review');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "attachment",
+                            "type": "file",
+                            "src": "./test_files/updated_deed.pdf"
+                        },
+                        {
+                            "key": "user_id",
+                            "value": "{{user_id}}",
+                            "type": "text"
+                        },
+                        {
+                            "key": "property_id",
+                            "value": "{{property_id}}",
+                            "type": "text"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/upload-document/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "upload-document", ""]
+                },
+                "description": "Test document resubmission after property verification rejection"
+            }
+        },
+        {
+            "name": "Verify Property - Approve After Resubmission",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_property_id')) {",
+                            "    throw new Error('user_property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has approval message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": {{user_property_id}},\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/verify/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "verify", ""]
+                },
+                "description": "Test property verification approval after document resubmission"
+            }
+        },
+        {
+            "name": "Verify Property - Reject Previously Approved",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Verify required variables exist",
+                            "if (!pm.environment.get('user_property_id')) {",
+                            "    throw new Error('user_property_id environment variable is not set. Please run the Create Property test first.');",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has rejection message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData).to.have.property('message');",
+                            "    pm.expect(jsonData.message).to.equal('Property ownership verification rejected. Please upload correct documents and resubmit for verification.');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"user_property_id\": {{user_property_id}},\n    \"verification_status\": \"rejected\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/property/verify/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "property", "verify", ""]
+                },
+                "description": "Test rejecting a property (works for both new and previously approved properties)"
+            }
         }
     ],
     "event": [
@@ -265,18 +854,13 @@
     ],
     "variable": [
         {
-            "key": "user_id",
-            "value": "",
+            "key": "base_url",
+            "value": "http://localhost:8000",
             "type": "string"
         },
         {
-            "key": "property_id",
-            "value": "",
-            "type": "string"
-        },
-        {
-            "key": "user_property_id",
-            "value": "",
+            "key": "auth_token",
+            "value": "your_auth_token_here",
             "type": "string"
         }
     ]

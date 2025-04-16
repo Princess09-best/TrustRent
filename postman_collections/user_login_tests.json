@@ -1,13 +1,13 @@
 {
 	"info": {
-		"_postman_id": "9876-5432-abcd-efgh",
-		"name": "TrustRent - User Login Tests",
-		"description": "Test cases for user login endpoint",
+		"_postman_id": "user-login-tests",
+		"name": "User Login Tests",
+		"description": "Collection for testing user login endpoints",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Valid Login (Verified User)",
+			"name": "Login User - Invalid Email",
 			"request": {
 				"method": "POST",
 				"header": [
@@ -18,21 +18,36 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"valid.user@example.com\",\n    \"password\": \"securepassword123\"\n}"
+					"raw": "{\n    \"email\": \"nonexistent@example.com\",\n    \"password\": \"Test@123\"\n}"
 				},
 				"url": {
-					"raw": "http://localhost:8000/api/user/login/",
-					"protocol": "http",
-					"host": ["localhost"],
-					"port": "8000",
+					"raw": "{{base_url}}/api/user/login/",
+					"host": ["{{base_url}}"],
 					"path": ["api", "user", "login", ""]
-				},
-				"description": "Test login with valid credentials for a verified user"
+				}
 			},
-			"response": []
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Invalid email or password');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
 		},
 		{
-			"name": "Unverified User Login",
+			"name": "Login User - Invalid Password",
 			"request": {
 				"method": "POST",
 				"header": [
@@ -43,21 +58,36 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"unverified.user@example.com\",\n    \"password\": \"securepassword123\"\n}"
+					"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"WrongPassword123\"\n}"
 				},
 				"url": {
-					"raw": "http://localhost:8000/api/user/login/",
-					"protocol": "http",
-					"host": ["localhost"],
-					"port": "8000",
+					"raw": "{{base_url}}/api/user/login/",
+					"host": ["{{base_url}}"],
 					"path": ["api", "user", "login", ""]
-				},
-				"description": "Test login with unverified account"
+				}
 			},
-			"response": []
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Invalid email or password');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
 		},
 		{
-			"name": "Invalid Email",
+			"name": "Login User - Missing Fields",
 			"request": {
 				"method": "POST",
 				"header": [
@@ -68,21 +98,66 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"nonexistent@example.com\",\n    \"password\": \"securepassword123\"\n}"
+					"raw": "{}"
 				},
 				"url": {
-					"raw": "http://localhost:8000/api/user/login/",
-					"protocol": "http",
-					"host": ["localhost"],
-					"port": "8000",
+					"raw": "{{base_url}}/api/user/login/",
+					"host": ["{{base_url}}"],
 					"path": ["api", "user", "login", ""]
-				},
-				"description": "Test login with non-existent email"
+				}
 			},
-			"response": []
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Email and password required');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
 		},
 		{
-			"name": "Invalid Password",
+			"name": "Login User - Unverified Account",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const email = pm.environment.get('last_registered_email');",
+							"console.log('Using email:', email);",
+							"pm.variables.set('test_email', email);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {",
+							"    pm.response.to.have.status(403);",
+							"});",
+							"",
+							"pm.test(\"Response has verification pending message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error').that.equals('Account pending verification. Please wait for verification email.');",
+							"    pm.expect(jsonData).to.have.property('is_verified').that.equals(false);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [
@@ -93,21 +168,153 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"valid.user@example.com\",\n    \"password\": \"wrongpassword123\"\n}"
+					"raw": "{\n    \"email\": \"{{last_registered_email}}\",\n    \"password\": \"StrongP@ssw0rd123\"\n}"
 				},
 				"url": {
-					"raw": "http://localhost:8000/api/user/login/",
-					"protocol": "http",
-					"host": ["localhost"],
-					"port": "8000",
+					"raw": "{{base_url}}/api/user/login/",
+					"host": ["{{base_url}}"],
 					"path": ["api", "user", "login", ""]
-				},
-				"description": "Test login with incorrect password"
-			},
-			"response": []
+				}
+			}
 		},
 		{
-			"name": "Missing Required Fields",
+			"name": "Check User Verification Status",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const email = pm.environment.get('last_registered_email');",
+							"console.log('Checking verification for email:', email);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Get user verification status\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    const email = pm.environment.get('last_registered_email');",
+							"    console.log('Looking for email:', email);",
+							"    console.log('Response:', JSON.stringify(jsonData));",
+							"",
+							"    const user = jsonData.find(u => u.email === email);",
+							"    console.log('Found user:', user);",
+							"",
+							"    if (user) {",
+							"        // Store both ID and email for verification",
+							"        pm.environment.set('user_id', user.id);",
+							"        pm.environment.set('verify_email', user.email);",
+							"        console.log('Set user_id to:', user.id);",
+							"        console.log('Set verify_email to:', user.email);",
+							"    } else {",
+							"        console.log('User not found in unverified list');",
+							"        pm.environment.unset('user_id');",
+							"        pm.environment.unset('verify_email');",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/user/unverified/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "user", "unverified", ""]
+				}
+			}
+		},
+		{
+			"name": "Verify User",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const userId = pm.environment.get('user_id');",
+							"console.log('Verifying user with ID:', userId);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has success message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('message');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\": {{user_id}}\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/user/verify/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "user", "verify", ""]
+				}
+			}
+		},
+		{
+			"name": "Login User - Success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has login confirmation and save token\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('message');",
+							"    pm.expect(jsonData).to.have.property('role');",
+							"    pm.expect(jsonData).to.have.property('is_verified');",
+							"    pm.expect(jsonData).to.have.property('name');",
+							"    pm.expect(jsonData).to.have.property('token');",
+							"",
+							"    // Save the token",
+							"    if (jsonData.token) {",
+							"        pm.environment.set('auth_token', jsonData.token);",
+							"        console.log('Auth token set:', jsonData.token);",
+							"    } else {",
+							"        console.error('No token found in response');",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [
@@ -118,18 +325,70 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"valid.user@example.com\"\n}"
+					"raw": "{\n    \"email\": \"{{last_registered_email}}\",\n    \"password\": \"StrongP@ssw0rd123\"\n}"
 				},
 				"url": {
-					"raw": "http://localhost:8000/api/user/login/",
-					"protocol": "http",
-					"host": ["localhost"],
-					"port": "8000",
+					"raw": "{{base_url}}/api/user/login/",
+					"host": ["{{base_url}}"],
 					"path": ["api", "user", "login", ""]
-				},
-				"description": "Test login with missing password field"
-			},
-			"response": []
+				}
+			}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Initialize collection variables if they don't exist",
+					"if (!pm.collectionVariables.get('registered_email')) {",
+					"    console.log('Warning: registered_email not set from registration test');",
+					"}",
+					"if (!pm.collectionVariables.get('registered_password')) {",
+					"    console.log('Warning: registered_password not set from registration test');",
+					"}",
+					"if (!pm.collectionVariables.get('user_id')) {",
+					"    console.log('Warning: user_id not set from registration test');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "needs_verification",
+			"value": "false",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "registered_email",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "registered_password",
+			"value": "StrongP@ssw0rd123",
+			"type": "string"
 		}
 	]
 } 

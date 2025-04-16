@@ -1,75 +1,87 @@
 from django.test import TestCase, Client
-from django.db import connections
 from django.utils import timezone
+from core.models import User, Property, UserProperty, PropertyImage
+from ops.models import PropertyListing
 import json
 
 class PropertyListingTests(TestCase):
-    databases = {'core', 'ops'}
+    databases = {'default', 'core'}
 
     def setUp(self):
         # Create test user
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO core_user 
-                (firstname, lastname, email, phone_number, password_hash, role, id_type, id_value, is_verified, is_active, created_at) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-            """, [
-                'Test', 'User', 'test@example.com', '+233555555555', 'hashed_password',
-                'property_owner', 'Ghana Card', 'GHA-123456789-0', True, True, timezone.now()
-            ])
-            self.user_id = cursor.fetchone()[0]
+        self.user = User.objects.using('core').create(
+            firstname='Test',
+            lastname='User',
+            email='test@example.com',
+            phone_number='+233555555555',
+            password_hash='hashed_password',
+            role='property_owner',
+            id_type='Ghana Card',
+            id_value='GHA-123456789-0',
+            is_verified=True,
+            is_active=True,
+            created_at=timezone.now()
+        )
 
-            # Create property
-            cursor.execute("""
-                INSERT INTO core_property 
-                (title, property_type, description, location, price, status, created_at) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-            """, [
-                'Test Property', '1_bedroom', 'A test property', 'Test Location',
-                1000.00, 'unlisted', timezone.now()
-            ])
-            self.property_id = cursor.fetchone()[0]
+        # Create property
+        self.property = Property.objects.using('core').create(
+            title='Test Property',
+            property_type='1_bedroom',
+            description='A test property',
+            location='Test Location',
+            price=1000.00,
+            status='unlisted',
+            created_at=timezone.now()
+        )
 
-            # Create user property relationship
-            cursor.execute("""
-                INSERT INTO core_userproperty 
-                (owner_id, property_id, is_verified, is_active, verification_status, transaction_hash, created_at) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-            """, [
-                self.user_id, self.property_id, True, True, 'approved', '', timezone.now()
-            ])
-            self.user_property_id = cursor.fetchone()[0]
+        # Create user property relationship
+        self.user_property = UserProperty.objects.using('core').create(
+            owner=self.user,
+            property=self.property,
+            is_verified=True,
+            is_active=True,
+            verification_status='approved',
+            transaction_hash='',
+            created_at=timezone.now()
+        )
 
-            # Upload property image
-            cursor.execute("""
-                INSERT INTO core_propertyimage 
-                (property_id, image, is_active, uploaded_at) 
-                VALUES (%s, %s, %s, %s)
-            """, [
-                self.property_id, 'test.jpg', True, timezone.now()
-            ])
+        # Upload property image
+        self.property_image = PropertyImage.objects.using('core').create(
+            property=self.property,
+            image='test.jpg',
+            is_active=True,
+            uploaded_at=timezone.now()
+        )
 
         self.client = Client()
 
     def test_create_listing_success(self):
         """Test creating a property listing with valid data"""
         data = {
-            'user_property_id': self.user_property_id,
-            'listing_type': 'rent'
+            'user_property_id': self.user_property.id,
+            'listing_type': 'rent',
+            'price': 1000.00  # Add price field
         }
         response = self.client.post(
             '/api/listing/create/',
             data=json.dumps(data),
             content_type='application/json'
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('listing_id', response.json())
-        self.assertIn('property_title', response.json())
+        self.assertEqual(response.status_code, 201)  # Should be 201 for resource creation
+        self.assertTrue('X-Listing-Id' in response.headers)  # Check header exists
+        self.assertIsNotNone(response.headers['X-Listing-Id'])  # Check header has value
+        
+        # Check response body
+        response_data = response.json()
+        self.assertEqual(response_data['message'], 'Property listing created successfully')
+        self.assertEqual(response_data['property_title'], 'Test Property')
+        self.assertEqual(response_data['listing_type'], 'rent')
+        self.assertEqual(response_data['price'], 1000.00)
 
     def test_create_listing_missing_fields(self):
         """Test creating a property listing with missing required fields"""
         data = {
-            'user_property_id': self.user_property_id
+            'user_property_id': self.user_property.id
         }
         response = self.client.post(
             '/api/listing/create/',
@@ -82,15 +94,11 @@ class PropertyListingTests(TestCase):
     def test_create_listing_unverified_property(self):
         """Test creating a listing for an unverified property"""
         # Update property to unverified
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                UPDATE core_userproperty 
-                SET is_verified = false 
-                WHERE id = %s
-            """, [self.user_property_id])
+        self.user_property.is_verified = False
+        self.user_property.save()
 
         data = {
-            'user_property_id': self.user_property_id,
+            'user_property_id': self.user_property.id,
             'listing_type': 'rent'
         }
         response = self.client.post(
@@ -105,7 +113,7 @@ class PropertyListingTests(TestCase):
         """Test getting all listed properties"""
         # First create a listing
         data = {
-            'user_property_id': self.user_property_id,
+            'user_property_id': self.user_property.id,
             'listing_type': 'rent'
         }
         self.client.post(
@@ -124,7 +132,7 @@ class PropertyListingTests(TestCase):
         """Test getting properties with various filters"""
         # First create a listing
         data = {
-            'user_property_id': self.user_property_id,
+            'user_property_id': self.user_property.id,
             'listing_type': 'rent'
         }
         self.client.post(
@@ -152,7 +160,7 @@ class PropertyListingTests(TestCase):
         """Test getting detailed property information"""
         # First create a listing
         data = {
-            'user_property_id': self.user_property_id,
+            'user_property_id': self.user_property.id,
             'listing_type': 'rent'
         }
         self.client.post(
@@ -161,7 +169,7 @@ class PropertyListingTests(TestCase):
             content_type='application/json'
         )
 
-        response = self.client.get(f'/api/properties/{self.property_id}/')
+        response = self.client.get(f'/api/properties/{self.property.id}/')
         self.assertEqual(response.status_code, 200)
         self.assertIn('title', response.json())
         self.assertIn('property_type', response.json())
@@ -179,10 +187,7 @@ class PropertyListingTests(TestCase):
 
     def tearDown(self):
         # Clean up test data
-        with connections['core'].cursor() as cursor:
-            cursor.execute("DELETE FROM core_userproperty WHERE id = %s", [self.user_property_id])
-            cursor.execute("DELETE FROM core_property WHERE id = %s", [self.property_id])
-            cursor.execute("DELETE FROM core_user WHERE id = %s", [self.user_id])
-
-        with connections['ops'].cursor() as cursor:
-            cursor.execute("DELETE FROM ops_propertylisting WHERE user_property_id = %s", [self.user_property_id]) 
+        PropertyListing.objects.filter(user_property=self.user_property).delete()
+        self.user_property.delete()
+        self.property.delete()
+        self.user.delete() 

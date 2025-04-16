@@ -1,0 +1,1 @@
+DELETE FROM django_migrations WHERE app IN ('core', 'ops'); 

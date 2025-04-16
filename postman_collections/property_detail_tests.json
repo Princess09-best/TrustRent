@@ -1,0 +1,401 @@
+{
+	"info": {
+		"_postman_id": "d9e0f4e3-6c7b-5a8d-9e1f-8a7b2c3d4e5f",
+		"name": "Property Detail Tests",
+		"description": "Tests for property detail endpoints including retrieval and error cases",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Property Details - Success",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Verify required variables exist",
+							"if (!pm.environment.get('property_id')) {",
+							"    throw new Error('property_id environment variable is not set. Please run the Create Property test first.');",
+							"}",
+							"if (!pm.environment.get('auth_token')) {",
+							"    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Property details are correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData).to.have.property('title');",
+							"    pm.expect(jsonData).to.have.property('property_type');",
+							"    pm.expect(jsonData).to.have.property('description');",
+							"    pm.expect(jsonData).to.have.property('location');",
+							"    pm.expect(jsonData).to.have.property('is_verified');",
+							"    pm.expect(jsonData).to.have.property('is_active');",
+							"    pm.expect(jsonData).to.have.property('documents');",
+							"    pm.expect(jsonData).to.have.property('images');",
+							"    pm.expect(jsonData).to.have.property('listings');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{property_id}}", ""]
+				},
+				"description": "Retrieve details of a verified and active property"
+			}
+		},
+		{
+			"name": "Get Property Details - Unauthorized",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{property_id}}", ""]
+				},
+				"description": "Attempt to access property details without authentication"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"",
+							"pm.test(\"Response has unauthorized message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Authentication required');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Get Property Details - Invalid ID Format",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/invalid_id/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "invalid_id", ""]
+				},
+				"description": "Attempt to get property details with an invalid ID format"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test(\"Response has invalid ID message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Invalid property ID format');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Get Property Details - Not Found",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/999999/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "999999", ""]
+				},
+				"description": "Attempt to get details of a non-existent property"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 404\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Property not found');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Get Own Unverified Property Details",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Verify required variables exist",
+							"if (!pm.environment.get('unverified_property_id')) {",
+							"    throw new Error('unverified_property_id environment variable is not set');",
+							"}",
+							"if (!pm.environment.get('owner_auth_token')) {",
+							"    throw new Error('owner_auth_token environment variable is not set');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Property details are correct for owner\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData).to.have.property('is_verified').to.be.false;",
+							"    pm.expect(jsonData).to.have.property('verification_status');",
+							"    pm.expect(jsonData).to.have.property('documents');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{owner_auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{unverified_property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{unverified_property_id}}", ""]
+				},
+				"description": "Property owner accessing their own unverified property"
+			}
+		},
+		{
+			"name": "Get Property Details - Unverified",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{unverified_property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{unverified_property_id}}", ""]
+				},
+				"description": "Attempt to access an unverified property as a non-owner"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {",
+							"    pm.response.to.have.status(403);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Property is not verified');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Get Property Details - Inactive",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{inactive_property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{inactive_property_id}}", ""]
+				},
+				"description": "Attempt to access an inactive property"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {",
+							"    pm.response.to.have.status(403);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Property is inactive');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Get Property Details - Unavailable",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{unavailable_property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{unavailable_property_id}}", ""]
+				}
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {",
+							"    pm.response.to.have.status(403);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Property is not available');",
+							"});"
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Get Property Details - Inactive Listing",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/property/{{inactive_listing_property_id}}/",
+					"host": ["{{base_url}}"],
+					"path": ["api", "property", "{{inactive_listing_property_id}}", ""]
+				}
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {",
+							"    pm.response.to.have.status(403);",
+							"});",
+							"",
+							"pm.test(\"Response has error message\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('error');",
+							"    pm.expect(jsonData.error).to.equal('Property has no active listings');",
+							"});"
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		}
+	]
+} 

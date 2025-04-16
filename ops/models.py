@@ -12,9 +12,9 @@ class PropertyListing(models.Model):
     ]
 
     # Store only the ID references
-    user_property_id = models.IntegerField()
+    user_property_id = models.IntegerField(default=0)  # Default to 0, but should always be set to a valid ID
     listing_type = models.CharField(max_length=10, choices=LISTING_TYPE_CHOICES)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -33,7 +33,7 @@ class PropertyReviewRequest(models.Model):
 
     property_listing = models.ForeignKey(PropertyListing, 
      on_delete=models.CASCADE, related_name='review_requests')
-    requester_id = models.IntegerField()  # Reference to User in core db
+    requester_id = models.IntegerField(default=0)  # Default to 0, but should always be set to a valid User ID
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, 
      default='requested')
     comment = models.TextField(blank=True, null=True)
@@ -45,8 +45,8 @@ class PropertyReviewRequest(models.Model):
 
 # Purchase agreement Model
 class PurchaseAgreement(models.Model):
-    user_property_id = models.IntegerField()  # Reference to UserProperty in core db
-    renter_id = models.IntegerField()  # Reference to User in core db
+    user_property_id = models.IntegerField(default=0)  # Default to 0, but should always be set to a valid UserProperty ID
+    renter_id = models.IntegerField(default=0)  # Default to 0, but should always be set to a valid User ID
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)  # optional for sales
     transaction_id = models.TextField()

@@ -14,6 +14,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 # Registering a new user
 @csrf_exempt
@@ -93,8 +94,8 @@ def register_user(request):
         )
         return JsonResponse({
             'message': 'Registration successful! Please wait for account verification.',
-            'user_id': user.id,
-            'is_verified': user.is_verified
+            'status': 'pending_verification',
+            'is_verified': False
         }, status=201)
     
     except json.JSONDecodeError:
@@ -134,15 +135,22 @@ def login_user(request):
                     'is_verified': False
                 }, status=403)
 
+            # Generate JWT token
+            refresh = RefreshToken()
+            refresh['user_id'] = user.id
+            refresh['email'] = user.email
+            refresh['role'] = user.role
+
             # Updating last_login
             user.last_login = now()
             user.save()
 
             return JsonResponse({
                 'message': 'Login successful',
-                'user_id': user.id,
+                'token': str(refresh.access_token),
                 'role': user.role,
-                'is_verified': user.is_verified
+                'is_verified': user.is_verified,
+                'name': f"{user.firstname} {user.lastname}"
             })
 
         except User.DoesNotExist:
@@ -270,11 +278,15 @@ def create_property(request):
                 ])
             user_property_id = cursor.fetchone()[0]
 
-        return JsonResponse({
-            'message': 'Property created successfully. You can create a listing once the property is verified.',
-            'property_id': property_id,
-            'user_property_id': user_property_id
-        })
+        response = JsonResponse({
+            'message': 'Property created successfully. You will be notified once the property is verified.',
+            'status': 'pending_verification'
+        }, status=201)
+        
+        # Add property_id and user_property_id in custom headers
+        response['X-Resource-Id'] = str(property_id)
+        response['X-UserProperty-Id'] = str(user_property_id)
+        return response
 
     except Exception as e:
         if 'unique_property_title_location' in str(e):
@@ -308,10 +320,10 @@ def upload_document(request):
                 'error': 'Invalid file type. File must be a valid PDF document.'
             }, status=400)
 
-        # Verify ownership
+        # Verify ownership and get current status
         with connections['core'].cursor() as cursor:
             cursor.execute("""
-                SELECT id 
+                SELECT id, verification_status 
                 FROM core_userproperty 
                 WHERE owner_id = %s AND property_id = %s
                 """, [user_id, property_id])
@@ -321,12 +333,13 @@ def upload_document(request):
                 return JsonResponse({'error': 'User is not the owner of this property'}, status=404)
             
             user_property_id = result[0]
+            current_status = result[1]
 
             # Save the file with a PDF extension
             file_name = f"{user_property_id}_{file.name}"
             saved_file_path = default_storage.save(f'title_deeds/{file_name}', ContentFile(file.read()))
 
-            # Create PropertyDocument
+            # Create PropertyDocument and update verification status if property was rejected
             cursor.execute("""
                 INSERT INTO core_propertydocument 
                 (user_property_id, attachment, uploaded_at) 
@@ -337,7 +350,22 @@ def upload_document(request):
                     timezone.now()
                 ])
 
-        return JsonResponse({'message': 'Document uploaded successfully.'})
+            # If property was previously rejected, reset status to pending
+            if current_status == 'rejected':
+                cursor.execute("""
+                    UPDATE core_userproperty 
+                    SET verification_status = 'pending'
+                    WHERE id = %s
+                    """, [user_property_id])
+                return JsonResponse({
+                    'message': 'New document uploaded successfully. Your property has been resubmitted for verification.',
+                    'status': 'pending_review'
+                }, status=201)
+
+        return JsonResponse({
+            'message': 'Document uploaded successfully. The document will be reviewed during property verification.',
+            'status': 'pending_review'
+        }, status=201)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -393,23 +421,81 @@ def get_unverified_properties(request):
 @csrf_exempt
 @require_http_methods(["PATCH"])
 def verify_property(request):
+    """
+    Endpoint for lands commission representative to verify property ownership.
+    They can either approve or reject the property verification after reviewing documents.
+    Properties can be re-verified even after approval.
+    """
     try:
         data = json.loads(request.body)
         user_property_id = data.get('user_property_id')
+        verification_status = data.get('verification_status')
+
+        if not user_property_id:
+            return JsonResponse({'error': 'user_property_id is required'}, status=400)
+
+        if not verification_status:
+            return JsonResponse({'error': 'verification_status is required'}, status=400)
+
+        # Validate verification status
+        valid_statuses = ['approved', 'rejected']
+        if verification_status not in valid_statuses:
+            return JsonResponse({
+                'error': f'Invalid verification status. Must be one of: {", ".join(valid_statuses)}'
+            }, status=400)
 
         with connections['core'].cursor() as cursor:
+            # First check if property exists
             cursor.execute("""
-                UPDATE core_userproperty 
-                SET is_verified = true, verification_status = 'approved'
+                SELECT verification_status 
+                FROM core_userproperty 
                 WHERE id = %s
-                RETURNING id
                 """, [user_property_id])
             
-            if not cursor.fetchone():
+            result = cursor.fetchone()
+            if not result:
                 return JsonResponse({'error': 'UserProperty not found.'}, status=404)
+            
+            current_status = result[0]
 
-        return JsonResponse({'message': 'Property ownership verified successfully.'})
+            # Update verification status
+            cursor.execute("""
+                UPDATE core_userproperty 
+                SET is_verified = %s, 
+                    verification_status = %s,
+                    last_verified_at = %s
+                WHERE id = %s
+                RETURNING id
+                """, [
+                    verification_status == 'approved',  # is_verified becomes true only if approved
+                    verification_status,
+                    timezone.now(),
+                    user_property_id
+                ])
 
+            # Log the status change in verification history
+            if current_status != verification_status:
+                cursor.execute("""
+                    INSERT INTO core_verificationhistory 
+                    (user_property_id, previous_status, new_status, changed_at)
+                    VALUES (%s, %s, %s, %s)
+                    """, [
+                        user_property_id,
+                        current_status,
+                        verification_status,
+                        timezone.now()
+                    ])
+
+        # Simple user-facing messages
+        if verification_status == 'approved':
+            message = 'Property ownership verification approved successfully.'
+        else:
+            message = 'Property ownership verification rejected. Please upload correct documents and resubmit for verification.'
+        
+        return JsonResponse({'message': message})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -453,9 +539,9 @@ def upload_property_image(request):
         if image.content_type not in allowed_types:
             return JsonResponse({'error': 'Invalid image type. Only JPEG and PNG are allowed.'}, status=400)
 
-        # Validate image size (max 5MB)
-        if image.size > 5 * 1024 * 1024:
-            return JsonResponse({'error': 'Image size too large. Maximum size is 5MB.'}, status=400)
+        # Validate image size (max 10MB)
+        if image.size > 10 * 1024 * 1024:
+            return JsonResponse({'error': 'Image size too large. Maximum size is 10MB.'}, status=400)
 
         # Verify property exists and user has access
         with connections['core'].cursor() as cursor:
@@ -469,19 +555,23 @@ def upload_property_image(request):
             if not cursor.fetchone():
                 return JsonResponse({'error': 'Property not found or access denied'}, status=404)
 
-            # Save the image
+            # Save the image file
+            file_name = f"property_{property_id}_{image.name}"
+            saved_file_path = default_storage.save(f'property_images/{file_name}', ContentFile(image.read()))
+
+            # Create PropertyImage record
             cursor.execute("""
                 INSERT INTO core_propertyimage 
                 (property_id, image, is_active, uploaded_at) 
                 VALUES (%s, %s, %s, %s) RETURNING id
-            """, [property_id, image, True, timezone.now()])
+            """, [property_id, saved_file_path, True, timezone.now()])
             
             image_id = cursor.fetchone()[0]
 
         return JsonResponse({
-            'message': 'Image uploaded successfully',
-            'image_id': image_id
-        })
+            'message': 'Image uploaded successfully. The image will be displayed once processed.',
+            'status': 'processing'
+        }, status=200)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -538,5 +628,65 @@ def get_all_properties(request):
         
         return JsonResponse(properties, safe=False)
 
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_property_detail(request, property_id):
+    """Get detailed information about a specific property"""
+    try:
+        with connections['core'].cursor() as cursor:
+            # Get property details with visibility checks
+            cursor.execute("""
+                SELECT 
+                    p.id, p.title, p.property_type, p.description, 
+                    p.location, p.status, p.created_at,
+                    u.firstname, u.lastname, u.email, u.phone_number,
+                    pl.id as listing_id, pl.listing_type, pl.price, pl.is_active as listing_status,
+                    pl.created_at as listing_created_at
+                FROM core_property p
+                JOIN core_userproperty up ON p.id = up.property_id
+                JOIN core_user u ON up.owner_id = u.id
+                LEFT JOIN ops_propertylisting pl ON up.id = pl.user_property_id
+                WHERE 
+                    p.id = %s 
+                    AND up.is_verified = true 
+                    AND up.is_active = true
+                    AND p.status = 'available'
+                    AND (pl.is_active = true OR pl.id IS NULL)
+            """, [property_id])
+            
+            result = cursor.fetchone()
+            if not result:
+                return JsonResponse({'error': 'Property not found or not available'}, status=404)
+            
+            columns = [col[0] for col in cursor.description]
+            property_data = dict(zip(columns, result))
+            
+            # Get all property images
+            cursor.execute("""
+                SELECT image, uploaded_at
+                FROM core_propertyimage
+                WHERE property_id = %s AND is_active = true
+                ORDER BY uploaded_at DESC
+            """, [property_id])
+            property_data['images'] = [dict(zip(['image', 'uploaded_at'], row)) 
+                                     for row in cursor.fetchall()]
+            
+            # Get property documents
+            cursor.execute("""
+                SELECT attachment, uploaded_at
+                FROM core_propertydocument
+                WHERE user_property_id = (
+                    SELECT id FROM core_userproperty WHERE property_id = %s
+                )
+                ORDER BY uploaded_at DESC
+            """, [property_id])
+            property_data['documents'] = [dict(zip(['attachment', 'uploaded_at'], row)) 
+                                        for row in cursor.fetchall()]
+            
+            return JsonResponse(property_data)
+            
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
