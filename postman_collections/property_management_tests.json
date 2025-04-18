@@ -1,8 +1,8 @@
 {
     "info": {
-        "_postman_id": "property-management-tests",
+        "_postman_id": "a1b2c3d4-e5f6-7g8h-9i0j-1k2l3m4n5o6p",
         "name": "Property Management Tests",
-        "description": "Collection for testing property management endpoints",
+        "description": "Tests for property management endpoints including creation, updates, and document management",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -494,7 +494,7 @@
                 },
                 "description": "Test property verification rejection"
             }
-            },
+        },
         {
             "name": "Verify Property - Invalid Status",
             "event": [

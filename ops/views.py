@@ -70,6 +70,14 @@ def create_property_listing(request):
             
             listing_id = cursor.fetchone()[0]
 
+        # Update property status to 'available'
+        with connections['core'].cursor() as cursor:
+            cursor.execute("""
+                UPDATE core_property 
+                SET status = 'available'
+                WHERE id = %s
+            """, [property_id])
+
         # Create response with clean body and listing_id in header
         response = JsonResponse({
             'message': 'Property listing created successfully',

@@ -58,7 +58,7 @@ def register_user(request):
             return JsonResponse({'error': 'Password must be at least 8 characters long'}, status=400)
 
         # Validate role
-        valid_roles = ['property_owner', 'renter']
+        valid_roles = ['property_owner', 'property_seeker']
         if data['role'] not in valid_roles:
             return JsonResponse({'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}, status=400)
 
@@ -92,11 +92,16 @@ def register_user(request):
             id_value=data['id_value'],
             is_verified=False
         )
-        return JsonResponse({
+        
+        response = JsonResponse({
             'message': 'Registration successful! Please wait for account verification.',
             'status': 'pending_verification',
             'is_verified': False
         }, status=201)
+        
+        # Add user ID in response header
+        response['X-User-Id'] = str(user.id)
+        return response
     
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
@@ -635,58 +640,286 @@ def get_all_properties(request):
 @require_http_methods(["GET"])
 def get_property_detail(request, property_id):
     """Get detailed information about a specific property"""
+    # Check for authentication
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
     try:
+        property_data = {}
+        
+        # First get property details from core database
         with connections['core'].cursor() as cursor:
-            # Get property details with visibility checks
             cursor.execute("""
                 SELECT 
                     p.id, p.title, p.property_type, p.description, 
-                    p.location, p.status, p.created_at,
-                    u.firstname, u.lastname, u.email, u.phone_number,
-                    pl.id as listing_id, pl.listing_type, pl.price, pl.is_active as listing_status,
-                    pl.created_at as listing_created_at
+                    p.location, p.status,
+                    u.firstname, u.lastname, u.phone_number,
+                    up.id as user_property_id
                 FROM core_property p
                 JOIN core_userproperty up ON p.id = up.property_id
                 JOIN core_user u ON up.owner_id = u.id
-                LEFT JOIN ops_propertylisting pl ON up.id = pl.user_property_id
                 WHERE 
                     p.id = %s 
                     AND up.is_verified = true 
                     AND up.is_active = true
                     AND p.status = 'available'
-                    AND (pl.is_active = true OR pl.id IS NULL)
             """, [property_id])
             
             result = cursor.fetchone()
             if not result:
                 return JsonResponse({'error': 'Property not found or not available'}, status=404)
             
-            columns = [col[0] for col in cursor.description]
+            columns = ['id', 'title', 'property_type', 'description', 'location', 'status', 
+                      'owner_firstname', 'owner_lastname', 'owner_phone', 'user_property_id']
             property_data = dict(zip(columns, result))
             
-            # Get all property images
+            # Format owner information
+            property_data['owner'] = {
+                'name': f"{property_data.pop('owner_firstname')} {property_data.pop('owner_lastname')}",
+                'phone': property_data.pop('owner_phone')
+            }
+            
+            user_property_id = property_data.pop('user_property_id')  # We'll use this to get listing info
+            
+            # Get only active property images
             cursor.execute("""
-                SELECT image, uploaded_at
+                SELECT image
                 FROM core_propertyimage
                 WHERE property_id = %s AND is_active = true
                 ORDER BY uploaded_at DESC
             """, [property_id])
-            property_data['images'] = [dict(zip(['image', 'uploaded_at'], row)) 
-                                     for row in cursor.fetchall()]
-            
-            # Get property documents
+            property_data['images'] = [row[0] for row in cursor.fetchall()]
+
+        # Then get listing details from ops database
+        with connections['ops'].cursor() as cursor:
             cursor.execute("""
-                SELECT attachment, uploaded_at
-                FROM core_propertydocument
-                WHERE user_property_id = (
-                    SELECT id FROM core_userproperty WHERE property_id = %s
-                )
-                ORDER BY uploaded_at DESC
+                SELECT id, listing_type, price
+                FROM ops_propertylisting 
+                WHERE user_property_id = %s AND is_active = true
+            """, [user_property_id])
+            
+            listing = cursor.fetchone()
+            if listing:
+                listing_columns = ['listing_id', 'listing_type', 'price']
+                listing_data = dict(zip(listing_columns, listing))
+                # Add listing data to property data
+                property_data.update(listing_data)
+            
+        return JsonResponse(property_data)
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def request_document_access(request):
+    """Endpoint for property seekers to request access to a property's title deed"""
+    try:
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        requester_id = data.get('requester_id')
+        reason = data.get('reason')
+
+        if not all([property_id, requester_id, reason]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        # Verify property exists and is available
+        with connections['core'].cursor() as cursor:
+            # First verify the requester is a property seeker
+            cursor.execute("""
+                SELECT role 
+                FROM core_user 
+                WHERE id = %s AND is_verified = true
+            """, [requester_id])
+            
+            result = cursor.fetchone()
+            if not result:
+                return JsonResponse({'error': 'Requester not found or not verified'}, status=404)
+            
+            if result[0] != 'property_seeker':
+                return JsonResponse({
+                    'error': 'Only property seekers can request document access'
+                }, status=403)
+
+            # Then check property and get user_property_id
+            cursor.execute("""
+                SELECT up.id, up.owner_id 
+                FROM core_userproperty up
+                JOIN core_property p ON up.property_id = p.id
+                WHERE p.id = %s AND up.is_verified = true AND p.status = 'available'
             """, [property_id])
-            property_data['documents'] = [dict(zip(['attachment', 'uploaded_at'], row)) 
-                                        for row in cursor.fetchall()]
             
-            return JsonResponse(property_data)
+            result = cursor.fetchone()
+            if not result:
+                return JsonResponse({'error': 'Property not found or not available'}, status=404)
             
+            user_property_id, owner_id = result
+
+            # Check if requester is not the owner
+            if int(requester_id) == owner_id:
+                return JsonResponse({
+                    'error': 'Property owners cannot request access to their own documents'
+                }, status=400)
+
+            # Check if there's already a pending or approved request
+            cursor.execute("""
+                SELECT status 
+                FROM core_documentaccessrequest 
+                WHERE user_property_id = %s AND requester_id = %s AND status IN ('pending', 'approved')
+            """, [user_property_id, requester_id])
+            
+            if cursor.fetchone():
+                return JsonResponse({
+                    'error': 'You already have a pending or approved request for this document'
+                }, status=400)
+
+            # Create the request
+            cursor.execute("""
+                INSERT INTO core_documentaccessrequest 
+                (user_property_id, requester_id, request_date, status, reason) 
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            """, [
+                user_property_id,
+                requester_id,
+                timezone.now(),
+                'pending',
+                reason
+            ])
+
+        return JsonResponse({
+            'message': 'Document access request submitted successfully. Awaiting owner approval.',
+            'status': 'pending'
+        }, status=201)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def respond_to_document_request(request):
+    """Endpoint for property owners to approve or deny document access requests"""
+    try:
+        data = json.loads(request.body)
+        request_id = data.get('request_id')
+        owner_id = data.get('owner_id')
+        decision = data.get('decision')
+        response_note = data.get('response_note', '')
+
+        if not all([request_id, owner_id, decision]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        if decision not in ['approved', 'denied']:
+            return JsonResponse({'error': 'Invalid decision. Must be either "approved" or "denied"'}, status=400)
+
+        with connections['core'].cursor() as cursor:
+            # Verify the request exists and owner has rights
+            cursor.execute("""
+                SELECT dar.status, up.owner_id, u.email as requester_email
+                FROM core_documentaccessrequest dar
+                JOIN core_userproperty up ON dar.user_property_id = up.id
+                JOIN core_user u ON dar.requester_id = u.id
+                WHERE dar.id = %s
+            """, [request_id])
+            
+            result = cursor.fetchone()
+            if not result:
+                return JsonResponse({'error': 'Request not found'}, status=404)
+            
+            current_status, request_owner_id, requester_email = result
+
+            # Verify ownership
+            if int(owner_id) != request_owner_id:
+                return JsonResponse({'error': 'You do not have permission to respond to this request'}, status=403)
+
+            # Check if request is still pending
+            if current_status != 'pending':
+                return JsonResponse({'error': 'This request has already been processed'}, status=400)
+
+            # Update request status
+            cursor.execute("""
+                UPDATE core_documentaccessrequest 
+                SET status = %s, response_date = %s, response_note = %s
+                WHERE id = %s
+            """, [decision, timezone.now(), response_note, request_id])
+
+        return JsonResponse({
+            'message': f'Document access request {decision}',
+            'requester_email': requester_email
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_document_requests(request):
+    """Get document access requests based on user role"""
+    try:
+        user_id = request.GET.get('user_id')
+        role = request.GET.get('role')
+
+        if not user_id or not role:
+            return JsonResponse({'error': 'Missing required parameters'}, status=400)
+
+        with connections['core'].cursor() as cursor:
+            if role == 'property_owner':
+                # Get requests for owner's properties
+                cursor.execute("""
+                    SELECT 
+                        dar.id,
+                        p.title as property_title,
+                        u.firstname || ' ' || u.lastname as requester_name,
+                        u.email as requester_email,
+                        dar.request_date,
+                        dar.status,
+                        dar.reason,
+                        dar.response_date,
+                        dar.response_note
+                    FROM core_documentaccessrequest dar
+                    JOIN core_userproperty up ON dar.user_property_id = up.id
+                    JOIN core_property p ON up.property_id = p.id
+                    JOIN core_user u ON dar.requester_id = u.id
+                    WHERE up.owner_id = %s
+                    ORDER BY dar.request_date DESC
+                """, [user_id])
+            elif role == 'property_seeker':
+                # Get requests made by the property seeker
+                cursor.execute("""
+                    SELECT 
+                        dar.id,
+                        p.title as property_title,
+                        u.firstname || ' ' || u.lastname as owner_name,
+                        dar.request_date,
+                        dar.status,
+                        dar.reason,
+                        dar.response_date,
+                        dar.response_note
+                    FROM core_documentaccessrequest dar
+                    JOIN core_userproperty up ON dar.user_property_id = up.id
+                    JOIN core_property p ON up.property_id = p.id
+                    JOIN core_user u ON up.owner_id = u.id
+                    WHERE dar.requester_id = %s
+                    ORDER BY dar.request_date DESC
+                """, [user_id])
+            else:
+                return JsonResponse({'error': 'Invalid role'}, status=400)
+
+            columns = ['id', 'property_title', 'contact_name', 'contact_email' if role == 'property_owner' else None,
+                      'request_date', 'status', 'reason', 'response_date', 'response_note']
+            columns = [col for col in columns if col is not None]
+            
+            requests = []
+            for row in cursor.fetchall():
+                request_data = dict(zip(columns, row))
+                # Convert datetime objects to ISO format strings
+                request_data['request_date'] = request_data['request_date'].isoformat()
+                if request_data['response_date']:
+                    request_data['response_date'] = request_data['response_date'].isoformat()
+                requests.append(request_data)
+
+        return JsonResponse(requests, safe=False)
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

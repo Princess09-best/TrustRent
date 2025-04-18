@@ -5,7 +5,7 @@ from django.utils import timezone
 class User(models.Model):
     ROLE_CHOICES = [
         ('property_owner', 'Property Owner'),
-        ('property_buyer', 'Property Buyer'),
+        ('property_seeker', 'Property Seeker'),
         ('land_commission_rep', 'Land Commission Rep'),
         ('sys_admin', 'System Admin')
     ]
@@ -116,3 +116,29 @@ class VerificationHistory(models.Model):
 
     def __str__(self):
         return f"{self.user_property} changed from {self.previous_status} to {self.new_status} at {self.changed_at}"
+
+
+class DocumentAccessRequest(models.Model):
+    REQUEST_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('denied', 'Denied')
+    ]
+
+    user_property = models.ForeignKey('UserProperty', on_delete=models.CASCADE)
+    requester = models.ForeignKey('User', on_delete=models.CASCADE)
+    request_date = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=10, choices=REQUEST_STATUS_CHOICES, default='pending')
+    response_date = models.DateTimeField(null=True, blank=True)
+    reason = models.TextField(help_text="Reason for requesting document access")
+    response_note = models.TextField(null=True, blank=True, help_text="Note from owner regarding the decision")
+
+    class Meta:
+        unique_together = ['user_property', 'requester', 'status']
+        indexes = [
+            models.Index(fields=['user_property', 'requester', 'status']),
+            models.Index(fields=['status', 'request_date'])
+        ]
+
+    def __str__(self):
+        return f"Document request for property {self.user_property.property.title} by {self.requester.email}"
