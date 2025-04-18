@@ -787,11 +787,18 @@ def request_document_access(request):
                 'pending',
                 reason
             ])
+            
+            request_id = cursor.fetchone()[0]
 
-        return JsonResponse({
+        response = JsonResponse({
             'message': 'Document access request submitted successfully. Awaiting owner approval.',
-            'status': 'pending'
+            'status': 'pending',
+            'request_id': request_id
         }, status=201)
+        
+        # Also add request_id in header
+        response['X-Resource-Id'] = str(request_id)
+        return response
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -857,18 +864,25 @@ def respond_to_document_request(request):
 def get_document_requests(request):
     """Get document access requests based on user role"""
     try:
+        # Check for authentication
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return JsonResponse({'error': 'Authentication required'}, status=401)
+            
         user_id = request.GET.get('user_id')
         role = request.GET.get('role')
 
         if not user_id or not role:
             return JsonResponse({'error': 'Missing required parameters'}, status=400)
 
+        # TODO: Add token validation to get the authenticated user's ID
+        # For now, we'll assume the token is valid and the user_id matches
+        
         with connections['core'].cursor() as cursor:
             if role == 'property_owner':
                 # Get requests for owner's properties
                 cursor.execute("""
                     SELECT 
-                        dar.id,
                         p.title as property_title,
                         u.firstname || ' ' || u.lastname as requester_name,
                         u.email as requester_email,
@@ -888,7 +902,6 @@ def get_document_requests(request):
                 # Get requests made by the property seeker
                 cursor.execute("""
                     SELECT 
-                        dar.id,
                         p.title as property_title,
                         u.firstname || ' ' || u.lastname as owner_name,
                         dar.request_date,
@@ -906,7 +919,7 @@ def get_document_requests(request):
             else:
                 return JsonResponse({'error': 'Invalid role'}, status=400)
 
-            columns = ['id', 'property_title', 'contact_name', 'contact_email' if role == 'property_owner' else None,
+            columns = ['property_title', 'contact_name', 'contact_email' if role == 'property_owner' else None,
                       'request_date', 'status', 'reason', 'response_date', 'response_note']
             columns = [col for col in columns if col is not None]
             

@@ -283,11 +283,20 @@
 									"    pm.response.to.have.status(201);",
 									"});",
 									"",
-									"pm.test(\"Response has correct structure\", function () {",
+									"pm.test(\"Response has correct structure and save request_id\", function () {",
 									"    const jsonData = pm.response.json();",
 									"    pm.expect(jsonData).to.have.property('message');",
 									"    pm.expect(jsonData).to.have.property('status');",
 									"    pm.expect(jsonData.status).to.equal('pending');",
+									"",
+									"    // Get request_id from response headers or body",
+									"    const requestId = pm.response.headers.get('X-Resource-Id') || jsonData.request_id;",
+									"    if (requestId) {",
+									"        pm.environment.set('request_id', requestId);",
+									"        console.log('Request ID set:', requestId);",
+									"    } else {",
+									"        console.error('No request_id found in response');",
+									"    }",
 									"});"
 								],
 								"type": "text/javascript"
@@ -372,15 +381,22 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"",
-									"pm.test(\"Response is an array of requests\", function () {",
+									"pm.test(\"Response is an array of requests with correct structure\", function () {",
 									"    const jsonData = pm.response.json();",
 									"    pm.expect(jsonData).to.be.an('array');",
 									"    if (jsonData.length > 0) {",
-									"        pm.expect(jsonData[0]).to.have.property('id');",
-									"        pm.expect(jsonData[0]).to.have.property('property_title');",
-									"        pm.expect(jsonData[0]).to.have.property('owner_name');",
-									"        pm.expect(jsonData[0]).to.have.property('status');",
-									"        pm.expect(jsonData[0]).to.have.property('reason');",
+									"        const request = jsonData[0];",
+									"        pm.expect(request).to.have.property('property_title').that.is.a('string');",
+									"        pm.expect(request).to.have.property('contact_name').that.is.a('string');",
+									"        pm.expect(request).to.have.property('request_date').that.is.a('string');",
+									"        pm.expect(request).to.have.property('status').that.is.a('string');",
+									"        pm.expect(request).to.have.property('reason').that.is.a('string');",
+									"        pm.expect(request).to.have.property('response_date');",
+									"        pm.expect(request).to.have.property('response_note');",
+									"        ",
+									"        // Log only non-sensitive information",
+									"        console.log('Request status:', request.status);",
+									"        console.log('Request date:', request.request_date);",
 									"    }",
 									"});"
 								],
@@ -410,6 +426,208 @@
 									"value": "property_seeker"
 								}
 							]
+						}
+					}
+				},
+				{
+					"name": "Get Document Requests - Property Owner",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Convert owner_id to a number and store it",
+									"const ownerId = Number(pm.environment.get('owner_id'));",
+									"if (isNaN(ownerId)) {",
+									"    throw new Error('owner_id must be a valid number');",
+									"}",
+									"pm.environment.set('owner_id', ownerId);",
+									"",
+									"if (!pm.environment.get('auth_token')) {",
+									"    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of requests with correct structure\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if (jsonData.length > 0) {",
+									"        const request = jsonData[0];",
+									"        pm.expect(request).to.have.property('property_title').that.is.a('string');",
+									"        pm.expect(request).to.have.property('contact_name').that.is.a('string');",
+									"        pm.expect(request).to.have.property('contact_email').that.is.a('string');",
+									"        pm.expect(request).to.have.property('request_date').that.is.a('string');",
+									"        pm.expect(request).to.have.property('status').that.is.a('string');",
+									"        pm.expect(request).to.have.property('reason').that.is.a('string');",
+									"        pm.expect(request).to.have.property('response_date');",
+									"        pm.expect(request).to.have.property('response_note');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/document/requests?user_id={{owner_id}}&role=property_owner",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"document",
+								"requests"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "{{owner_id}}"
+								},
+								{
+									"key": "role",
+									"value": "property_owner"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Respond to Document Request - Accept",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get('request_id')) {",
+									"    throw new Error('request_id environment variable is not set');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has correct structure\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"    pm.expect(jsonData.status).to.equal('approved');",
+									"    pm.expect(jsonData).to.have.property('document_url');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"request_id\": {{request_id}},\n    \"owner_id\": {{owner_id}},\n    \"decision\": \"approved\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/document/respond/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "document", "respond", ""]
+						}
+					}
+				},
+				{
+					"name": "Respond to Document Request - Deny",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get('request_id')) {",
+									"    throw new Error('request_id environment variable is not set');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has correct structure\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    // Log the response for debugging",
+									"    console.log('Response:', JSON.stringify(jsonData, null, 2));",
+									"    ",
+									"    // Basic response structure check",
+									"    pm.expect(jsonData).to.be.an('object');",
+									"    ",
+									"    // Check for either message or status or both",
+									"    pm.expect(jsonData).to.satisfy((data) => {",
+									"        return data.hasOwnProperty('message') || ",
+									"               data.hasOwnProperty('status') ||",
+									"               data.hasOwnProperty('detail');",
+									"    }, 'Response should have either message, status, or detail property');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"request_id\": \"{{request_id}}\",\n    \"owner_id\": \"{{owner_id}}\",\n    \"decision\": \"denied\",\n    \"reason\": \"Request denied due to insufficient information provided.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/document/respond/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "document", "respond", ""]
 						}
 					}
 				}
