@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'ops',
+    'ledger',
     'rest_framework',
     'rest_framework_simplejwt',
 ]

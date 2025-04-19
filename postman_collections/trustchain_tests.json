@@ -1,0 +1,110 @@
+{
+    "info": {
+        "name": "TrustChain Tests",
+        "description": "Test collection for TrustChain property registration and verification",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Register Property on TrustChain",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"property_id\": \"PROP_1\",\n    \"owner_id\": {{owner_id}},\n    \"document_hash\": \"{{$randomUUID}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/register/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "register"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Verify Chain Integrity",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/verify-chain/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "verify-chain"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Property History",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/property-history/PROP_1/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "property-history", "PROP_1"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Verify Property Ownership",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/verify-ownership/?property_id=PROP_1&owner_id={{owner_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "verify-ownership"],
+                    "query": [
+                        {
+                            "key": "property_id",
+                            "value": "PROP_1"
+                        },
+                        {
+                            "key": "owner_id",
+                            "value": "{{owner_id}}"
+                        }
+                    ]
+                }
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000"
+        }
+    ]
+} 

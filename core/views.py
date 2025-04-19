@@ -15,6 +15,8 @@ from django.core.files.base import ContentFile
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
+from ledger.models import PropertyLedger
+import hashlib
 
 # Registering a new user
 @csrf_exempt
@@ -450,18 +452,19 @@ def verify_property(request):
             }, status=400)
 
         with connections['core'].cursor() as cursor:
-            # First check if property exists
+            # First check if property exists and get necessary details
             cursor.execute("""
-                SELECT verification_status 
-                FROM core_userproperty 
-                WHERE id = %s
+                SELECT up.verification_status, up.owner_id, up.property_id, pd.attachment
+                FROM core_userproperty up
+                LEFT JOIN core_propertydocument pd ON up.id = pd.user_property_id
+                WHERE up.id = %s
                 """, [user_property_id])
             
             result = cursor.fetchone()
             if not result:
                 return JsonResponse({'error': 'UserProperty not found.'}, status=404)
             
-            current_status = result[0]
+            current_status, owner_id, property_id, document_path = result
 
             # Update verification status
             cursor.execute("""
@@ -491,11 +494,40 @@ def verify_property(request):
                         timezone.now()
                     ])
 
-        # Simple user-facing messages
-        if verification_status == 'approved':
-            message = 'Property ownership verification approved successfully.'
-        else:
-            message = 'Property ownership verification rejected. Please upload correct documents and resubmit for verification.'
+            # If approved, register on TrustChain
+            if verification_status == 'approved':
+                # Calculate document hash if document exists
+                document_hash = None
+                if document_path:
+                    try:
+                        with default_storage.open(document_path, 'rb') as doc_file:
+                            document_hash = hashlib.sha256(doc_file.read()).hexdigest()
+                    except Exception as e:
+                        # Log error but continue with registration
+                        print(f"Error calculating document hash: {str(e)}")
+
+                # Register on TrustChain
+                success, message, block = PropertyLedger.register_property(
+                    property_id=property_id,
+                    owner_id=owner_id,
+                    document_hash=document_hash
+                )
+
+                if not success:
+                    return JsonResponse({
+                        'error': f'Property verified but blockchain registration failed: {message}'
+                    }, status=500)
+
+                # Update the transaction_hash in UserProperty
+                cursor.execute("""
+                    UPDATE core_userproperty 
+                    SET transaction_hash = %s
+                    WHERE id = %s
+                """, [block.current_hash, user_property_id])
+
+                message = 'Property ownership verified and registered on TrustChain successfully.'
+            else:
+                message = 'Property ownership verification rejected. Please upload correct documents and resubmit for verification.'
         
         return JsonResponse({'message': message})
 
