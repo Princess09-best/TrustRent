@@ -111,11 +111,11 @@ class UserProperty(models.Model):
     def get_document_hash(self):
         """Calculate hash of the latest property document if it exists"""
         try:
-            latest_doc = self.propertydocument_set.latest('uploaded_at')
+            latest_doc = self.documents.latest('uploaded_at')
             if latest_doc and latest_doc.attachment:
                 with default_storage.open(latest_doc.attachment.path, 'rb') as doc_file:
                     return hashlib.sha256(doc_file.read()).hexdigest()
-        except (self.propertydocument_set.model.DoesNotExist, Exception) as e:
+        except (self.documents.model.DoesNotExist, Exception) as e:
             print(f"Error calculating document hash: {str(e)}")
         return None
 

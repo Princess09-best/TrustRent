@@ -469,26 +469,27 @@ def verify_property(request):
         # If approved, register on blockchain
         if verification_status == 'approved':
             try:
-                # Get document hash using the new method
-                document_hash = user_property.get_document_hash()
-                
                 # Register on blockchain with verifier ID
-                transaction_hash = PropertyLedger.register_property(
-                    property_id=str(user_property.id),
+                success, message, block = PropertyLedger.register_property(
+                    property_id=str(user_property.property.id),
                     owner_id=str(user_property.owner.id),
                     verified_by=str(request.user.id),
-                    document_hash=document_hash,
                     timestamp=user_property.verified_at
                 )
                 
+                if not success:
+                    return Response({
+                        'error': f'Error registering property on blockchain: {message}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
                 # Update transaction hash
-                user_property.blockchain_transaction_hash = transaction_hash
+                user_property.blockchain_transaction_hash = block.current_hash
                 user_property.save()
                 
                 return Response({
                     'message': 'Property verified and registered on blockchain successfully',
                     'verification_status': verification_status,
-                    'transaction_hash': transaction_hash
+                    'transaction_hash': block.current_hash
                 }, status=status.HTTP_200_OK)
                 
             except Exception as e:
