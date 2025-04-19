@@ -1,5 +1,25 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.files.storage import default_storage
+import hashlib
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        if password:
+            user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'sys_admin')
+        return self.create_user(email, password, **extra_fields)
 
 # User Model
 class User(models.Model):
@@ -25,7 +45,7 @@ class User(models.Model):
 
     def __str__(self):
         return f"{self.firstname} {self.lastname} ({self.role})"
-    
+
 
 # Property Model
 class Property(models.Model):
@@ -87,6 +107,17 @@ class UserProperty(models.Model):
 
     def __str__(self):
         return f"{self.owner.firstname} owns {self.property.title} (Active: {self.is_active})"
+
+    def get_document_hash(self):
+        """Calculate hash of the latest property document if it exists"""
+        try:
+            latest_doc = self.propertydocument_set.latest('uploaded_at')
+            if latest_doc and latest_doc.attachment:
+                with default_storage.open(latest_doc.attachment.path, 'rb') as doc_file:
+                    return hashlib.sha256(doc_file.read()).hexdigest()
+        except (self.propertydocument_set.model.DoesNotExist, Exception) as e:
+            print(f"Error calculating document hash: {str(e)}")
+        return None
 
     class Meta:
         db_table = 'core_userproperty'

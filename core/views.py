@@ -17,6 +17,11 @@ from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from ledger.models import PropertyLedger
 import hashlib
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import UserProperty
 
 # Registering a new user
 @csrf_exempt
@@ -425,116 +430,83 @@ def get_unverified_properties(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 # Verifying a property by land commission representative
-@csrf_exempt
-@require_http_methods(["PATCH"])
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
 def verify_property(request):
     """
-    Endpoint for lands commission representative to verify property ownership.
-    They can either approve or reject the property verification after reviewing documents.
-    Properties can be re-verified even after approval.
+    Verify a property and register it on the blockchain if approved
     """
     try:
-        data = json.loads(request.body)
-        user_property_id = data.get('user_property_id')
-        verification_status = data.get('verification_status')
+        # Get required fields from request
+        user_property_id = request.data.get('user_property_id')
+        verification_status = request.data.get('verification_status')
 
-        if not user_property_id:
-            return JsonResponse({'error': 'user_property_id is required'}, status=400)
+        if not user_property_id or not verification_status:
+            return Response(
+                {'error': 'user_property_id and verification_status are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if not verification_status:
-            return JsonResponse({'error': 'verification_status is required'}, status=400)
+        if verification_status not in ['approved', 'rejected']:
+            return Response(
+                {'error': 'verification_status must be either approved or rejected'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Validate verification status
-        valid_statuses = ['approved', 'rejected']
-        if verification_status not in valid_statuses:
-            return JsonResponse({
-                'error': f'Invalid verification status. Must be one of: {", ".join(valid_statuses)}'
-            }, status=400)
+        # Get the property
+        try:
+            user_property = UserProperty.objects.get(id=user_property_id)
+        except UserProperty.DoesNotExist:
+            return Response(
+                {'error': 'Property not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        with connections['core'].cursor() as cursor:
-            # First check if property exists and get necessary details
-            cursor.execute("""
-                SELECT up.verification_status, up.owner_id, up.property_id, pd.attachment
-                FROM core_userproperty up
-                LEFT JOIN core_propertydocument pd ON up.id = pd.user_property_id
-                WHERE up.id = %s
-                """, [user_property_id])
-            
-            result = cursor.fetchone()
-            if not result:
-                return JsonResponse({'error': 'UserProperty not found.'}, status=404)
-            
-            current_status, owner_id, property_id, document_path = result
-
-            # Update verification status
-            cursor.execute("""
-                UPDATE core_userproperty 
-                SET is_verified = %s, 
-                    verification_status = %s,
-                    last_verified_at = %s
-                WHERE id = %s
-                RETURNING id
-                """, [
-                    verification_status == 'approved',  # is_verified becomes true only if approved
-                    verification_status,
-                    timezone.now(),
-                    user_property_id
-                ])
-
-            # Log the status change in verification history
-            if current_status != verification_status:
-                cursor.execute("""
-                    INSERT INTO core_verificationhistory 
-                    (user_property_id, previous_status, new_status, changed_at)
-                    VALUES (%s, %s, %s, %s)
-                    """, [
-                        user_property_id,
-                        current_status,
-                        verification_status,
-                        timezone.now()
-                    ])
-
-            # If approved, register on TrustChain
-            if verification_status == 'approved':
-                # Calculate document hash if document exists
-                document_hash = None
-                if document_path:
-                    try:
-                        with default_storage.open(document_path, 'rb') as doc_file:
-                            document_hash = hashlib.sha256(doc_file.read()).hexdigest()
-                    except Exception as e:
-                        # Log error but continue with registration
-                        print(f"Error calculating document hash: {str(e)}")
-
-                # Register on TrustChain
-                success, message, block = PropertyLedger.register_property(
-                    property_id=property_id,
-                    owner_id=owner_id,
-                    document_hash=document_hash
-                )
-
-                if not success:
-                    return JsonResponse({
-                        'error': f'Property verified but blockchain registration failed: {message}'
-                    }, status=500)
-
-                # Update the transaction_hash in UserProperty
-                cursor.execute("""
-                    UPDATE core_userproperty 
-                    SET transaction_hash = %s
-                    WHERE id = %s
-                """, [block.current_hash, user_property_id])
-
-                message = 'Property ownership verified and registered on TrustChain successfully.'
-            else:
-                message = 'Property ownership verification rejected. Please upload correct documents and resubmit for verification.'
+        # Update verification status
+        user_property.verification_status = verification_status
+        user_property.verified_at = timezone.now()
         
-        return JsonResponse({'message': message})
-
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        # If approved, register on blockchain
+        if verification_status == 'approved':
+            try:
+                # Get document hash using the new method
+                document_hash = user_property.get_document_hash()
+                
+                # Register on blockchain with verifier ID
+                transaction_hash = PropertyLedger.register_property(
+                    property_id=str(user_property.id),
+                    owner_id=str(user_property.owner.id),
+                    verified_by=str(request.user.id),
+                    document_hash=document_hash,
+                    timestamp=user_property.verified_at
+                )
+                
+                # Update transaction hash
+                user_property.blockchain_transaction_hash = transaction_hash
+                user_property.save()
+                
+                return Response({
+                    'message': 'Property verified and registered on blockchain successfully',
+                    'verification_status': verification_status,
+                    'transaction_hash': transaction_hash
+                }, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                return Response({
+                    'error': f'Error registering property on blockchain: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # If rejected, just save the status
+        user_property.save()
+        return Response({
+            'message': 'Property verification status updated successfully',
+            'verification_status': verification_status
+        }, status=status.HTTP_200_OK)
+        
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({
+            'error': f'Error processing request: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Rejecting a property by land commission representative
 @csrf_exempt

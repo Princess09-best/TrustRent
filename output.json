@@ -1,0 +1,2472 @@
+{
+  "collection": {
+    "_": {
+      "postman_id": "user-registration-tests"
+    },
+    "item": [
+      {
+        "id": "7c938f4b-ece0-44db-b713-90843c83c511",
+        "name": "Register User - Invalid Email Format",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"invalid-email\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "34824bc0-c4bc-482c-a0c7-b248db17b061",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 400\", function () {",
+                "    pm.response.to.have.status(400);",
+                "});",
+                "",
+                "pm.test(\"Response has error message about invalid email\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.error).to.equal('Invalid email format');",
+                "});"
+              ],
+              "_lastExecutionId": "ff1e8d75-17b3-42c3-b291-7043455a2221"
+            }
+          }
+        ]
+      },
+      {
+        "id": "8e725c36-77ac-4a97-89d5-3a4f2658ff2f",
+        "name": "Register User - Invalid Phone Number",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test2@example.com\",\n    \"phone_number\": \"invalid-phone\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "c3adb18f-54ef-4abf-89b9-fb5fdd31bab9",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 400\", function () {",
+                "    pm.response.to.have.status(400);",
+                "});",
+                "",
+                "pm.test(\"Response has error message about invalid phone\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.error).to.equal('Invalid phone number format. Use format: +233XXXXXXXXX');",
+                "});"
+              ],
+              "_lastExecutionId": "90599e6c-45f9-4cda-9a2b-3520ec4675ff"
+            }
+          }
+        ]
+      },
+      {
+        "id": "6c0c12f7-88d1-4dea-a3f8-ca397b08f3d9",
+        "name": "Register User - Weak Password",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test3@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"weak\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "5cbbdae5-87ec-4a80-a299-9320cd2fe5b8",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 400\", function () {",
+                "    pm.response.to.have.status(400);",
+                "});",
+                "",
+                "pm.test(\"Response has error message about weak password\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.error).to.equal('Password must be at least 8 characters long');",
+                "});"
+              ],
+              "_lastExecutionId": "463ec9dd-6722-488f-8d1d-512213cad6b3"
+            }
+          }
+        ]
+      },
+      {
+        "id": "f4a6654e-782b-4825-9894-1ecc1364327c",
+        "name": "Register User - Invalid ID Type",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test_idtype@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Drivers License\",\n    \"id_value\": \"DL123456\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "e1ad9a09-1302-4dc4-ae4a-ad3b3edb698e",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 400\", function () {",
+                "    pm.response.to.have.status(400);",
+                "});",
+                "",
+                "pm.test(\"Response has error message about invalid ID type\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.error).to.include('Invalid ID type. Must be one of: Ghana Card, Passport');",
+                "});"
+              ],
+              "_lastExecutionId": "ce642697-28ce-48d4-a965-a57e8391a386"
+            }
+          }
+        ]
+      },
+      {
+        "id": "982435a8-7262-497b-a451-c576b09620fe",
+        "name": "Register User - Missing Required Fields",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "2c3d18ac-cd6f-46d1-8c9b-e0cc40d14393",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 400\", function () {",
+                "    pm.response.to.have.status(400);",
+                "});",
+                "",
+                "pm.test(\"Response has error message about missing fields\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData.error).to.include('is required');",
+                "});"
+              ],
+              "_lastExecutionId": "3cc6e2af-50d5-4cae-9077-6274c7976a5d"
+            }
+          }
+        ]
+      },
+      {
+        "id": "c0913fdc-0da1-434a-95c2-2e6e7cf08b56",
+        "name": "Register User - Success",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"{{test_email}}\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "prerequest",
+            "script": {
+              "id": "e4578428-5577-4d06-9fdd-b9c2a2ac58cb",
+              "type": "text/javascript",
+              "exec": [
+                "// Generate a unique email using timestamp",
+                "const timestamp = new Date().getTime();",
+                "const email = `test_${timestamp}@example.com`;",
+                "pm.environment.set('last_registered_email', email);",
+                "pm.variables.set('test_email', email);"
+              ],
+              "_lastExecutionId": "752508b7-6da1-4fa9-9944-649b83ffdc06"
+            }
+          },
+          {
+            "listen": "test",
+            "script": {
+              "id": "c6b88e91-b413-4b1c-bc8b-0a19b6d09d9e",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 201\", function () {",
+                "    pm.response.to.have.status(201);",
+                "});",
+                "",
+                "pm.test(\"Response has registration confirmation\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData).to.have.property('message');",
+                "    pm.expect(jsonData).to.have.property('status');",
+                "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                "    pm.expect(jsonData.is_verified).to.equal(false);",
+                "});"
+              ],
+              "_lastExecutionId": "0e762842-633a-4aa0-a359-f35f450fbde5"
+            }
+          }
+        ]
+      },
+      {
+        "id": "0b318345-634d-47b6-b798-df002e9c5e89",
+        "name": "Register Property Seeker - Success",
+        "request": {
+          "description": {
+            "content": "Register a new property seeker user",
+            "type": "text/plain"
+          },
+          "url": {
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "{{base_url}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"{{test_seeker_email}}\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"Test123!@#\",\n    \"role\": \"property_seeker\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-1\"\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "prerequest",
+            "script": {
+              "id": "6219ebbd-b22d-4d6f-af96-16fb8e922cbf",
+              "type": "text/javascript",
+              "exec": [
+                "// Generate a unique email using timestamp",
+                "const timestamp = new Date().getTime();",
+                "const email = `seeker_${timestamp}@example.com`;",
+                "pm.environment.set('seeker_email', email);",
+                "pm.variables.set('test_seeker_email', email);"
+              ],
+              "_lastExecutionId": "63bc3911-9522-4214-9361-2d871524b671"
+            }
+          },
+          {
+            "listen": "test",
+            "script": {
+              "id": "2d6436f0-ff24-4522-be8c-246c2450037e",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Status code is 201\", function () {",
+                "    pm.response.to.have.status(201);",
+                "});",
+                "",
+                "pm.test(\"Response has registration confirmation\", function () {",
+                "    var jsonData = pm.response.json();",
+                "    pm.expect(jsonData).to.have.property('message');",
+                "    pm.expect(jsonData).to.have.property('status');",
+                "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                "    pm.expect(jsonData.is_verified).to.equal(false);",
+                "});",
+                "",
+                "// Extract and save the user ID from response headers",
+                "const userId = pm.response.headers.get('X-User-Id');",
+                "if (userId) {",
+                "    pm.environment.set('seeker_id', userId);",
+                "    console.log('Set seeker_id:', userId);",
+                "}"
+              ],
+              "_lastExecutionId": "f01dbd18-ad2e-466f-87de-eeabd27a95a5"
+            }
+          }
+        ]
+      }
+    ],
+    "event": [
+      {
+        "listen": "prerequest",
+        "script": {
+          "id": "573e56c2-d5b5-409f-8450-4938cfdf9cde",
+          "type": "text/javascript",
+          "exec": [
+            ""
+          ],
+          "_lastExecutionId": "0a2427b9-96bd-463f-ad7c-5c9b1c9129ca"
+        }
+      },
+      {
+        "listen": "test",
+        "script": {
+          "id": "6f5ddfea-544e-4fa4-b162-199968e1a27c",
+          "type": "text/javascript",
+          "exec": [
+            ""
+          ],
+          "_lastExecutionId": "232221fe-7ac2-4814-97d3-c163db6fbb4e"
+        }
+      }
+    ],
+    "variable": [
+      {
+        "type": "string",
+        "value": "http://localhost:8000",
+        "key": "base_url"
+      }
+    ],
+    "info": {
+      "_postman_id": "user-registration-tests",
+      "name": "User Registration Tests",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "description": {
+        "content": "Collection for testing user registration endpoints",
+        "type": "text/plain"
+      }
+    }
+  },
+  "environment": {
+    "id": "15995137-50bf-4085-966b-477065ca78c1",
+    "values": [
+      {
+        "type": "any",
+        "value": "http://localhost:8000",
+        "key": "base_url"
+      },
+      {
+        "type": "any",
+        "value": "test_1745089392114@example.com",
+        "key": "last_registered_email"
+      },
+      {
+        "type": "any",
+        "value": "seeker_1745089393128@example.com",
+        "key": "seeker_email"
+      },
+      {
+        "type": "any",
+        "value": "33",
+        "key": "seeker_id"
+      }
+    ]
+  },
+  "globals": {
+    "id": "58fcb6a0-1b46-4dbb-b04d-c1ec092efac0",
+    "values": []
+  },
+  "run": {
+    "stats": {
+      "iterations": {
+        "total": 1,
+        "pending": 0,
+        "failed": 0
+      },
+      "items": {
+        "total": 7,
+        "pending": 0,
+        "failed": 0
+      },
+      "scripts": {
+        "total": 23,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequests": {
+        "total": 7,
+        "pending": 0,
+        "failed": 0
+      },
+      "requests": {
+        "total": 7,
+        "pending": 0,
+        "failed": 0
+      },
+      "tests": {
+        "total": 7,
+        "pending": 0,
+        "failed": 0
+      },
+      "assertions": {
+        "total": 14,
+        "pending": 0,
+        "failed": 0
+      },
+      "testScripts": {
+        "total": 14,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequestScripts": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      }
+    },
+    "timings": {
+      "responseAverage": 332.57142857142856,
+      "responseMin": 6,
+      "responseMax": 1064,
+      "responseSd": 431.04088541339,
+      "dnsAverage": 0,
+      "dnsMin": 0,
+      "dnsMax": 0,
+      "dnsSd": 0,
+      "firstByteAverage": 0,
+      "firstByteMin": 0,
+      "firstByteMax": 0,
+      "firstByteSd": 0,
+      "started": 1745089391412,
+      "completed": 1745089394240
+    },
+    "executions": [
+      {
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 7,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "07df3b6c-111f-46f6-9aec-a83bf8f303e9",
+          "httpRequestId": "904c1625-65b8-4b84-9773-cb8eb689fc0e"
+        },
+        "item": {
+          "id": "7c938f4b-ece0-44db-b713-90843c83c511",
+          "name": "Register User - Invalid Email Format",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"invalid-email\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "34824bc0-c4bc-482c-a0c7-b248db17b061",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about invalid email\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('Invalid email format');",
+                  "});"
+                ],
+                "_lastExecutionId": "ff1e8d75-17b3-42c3-b291-7043455a2221"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "286b46c9-4ea3-40d9-8e6d-489b12c24693",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "249",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"invalid-email\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": {
+          "id": "ddb9abe3-b8e3-49b5-832b-f5cb51fc9bfb",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:11 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "33"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              101,
+              114,
+              114,
+              111,
+              114,
+              34,
+              58,
+              32,
+              34,
+              73,
+              110,
+              118,
+              97,
+              108,
+              105,
+              100,
+              32,
+              101,
+              109,
+              97,
+              105,
+              108,
+              32,
+              102,
+              111,
+              114,
+              109,
+              97,
+              116,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 55,
+          "responseSize": 33
+        },
+        "id": "7c938f4b-ece0-44db-b713-90843c83c511",
+        "assertions": [
+          {
+            "assertion": "Status code is 400",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has error message about invalid email",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "b84a5783-afb8-44ea-a06c-9a265d9de2d2",
+          "length": 7,
+          "cycles": 1,
+          "position": 1,
+          "iteration": 0,
+          "httpRequestId": "9d926b9d-93b0-46d4-bdd7-ea25868ed28c"
+        },
+        "item": {
+          "id": "8e725c36-77ac-4a97-89d5-3a4f2658ff2f",
+          "name": "Register User - Invalid Phone Number",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test2@example.com\",\n    \"phone_number\": \"invalid-phone\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "c3adb18f-54ef-4abf-89b9-fb5fdd31bab9",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about invalid phone\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('Invalid phone number format. Use format: +233XXXXXXXXX');",
+                  "});"
+                ],
+                "_lastExecutionId": "90599e6c-45f9-4cda-9a2b-3520ec4675ff"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "13314070-5573-4b95-a302-c7cd944bc40d",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "253",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test2@example.com\",\n    \"phone_number\": \"invalid-phone\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": {
+          "id": "e63fdc03-22b1-4140-a256-961cce486518",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:11 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "67"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              101,
+              114,
+              114,
+              111,
+              114,
+              34,
+              58,
+              32,
+              34,
+              73,
+              110,
+              118,
+              97,
+              108,
+              105,
+              100,
+              32,
+              112,
+              104,
+              111,
+              110,
+              101,
+              32,
+              110,
+              117,
+              109,
+              98,
+              101,
+              114,
+              32,
+              102,
+              111,
+              114,
+              109,
+              97,
+              116,
+              46,
+              32,
+              85,
+              115,
+              101,
+              32,
+              102,
+              111,
+              114,
+              109,
+              97,
+              116,
+              58,
+              32,
+              43,
+              50,
+              51,
+              51,
+              88,
+              88,
+              88,
+              88,
+              88,
+              88,
+              88,
+              88,
+              88,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 73,
+          "responseSize": 67
+        },
+        "id": "8e725c36-77ac-4a97-89d5-3a4f2658ff2f",
+        "assertions": [
+          {
+            "assertion": "Status code is 400",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has error message about invalid phone",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "f7c80b69-ddc4-462d-9e37-63dd51c34f4f",
+          "length": 7,
+          "cycles": 1,
+          "position": 2,
+          "iteration": 0,
+          "httpRequestId": "5405d188-d188-4718-9f0e-57b98815ada1"
+        },
+        "item": {
+          "id": "6c0c12f7-88d1-4dea-a3f8-ca397b08f3d9",
+          "name": "Register User - Weak Password",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test3@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"weak\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "5cbbdae5-87ec-4a80-a299-9320cd2fe5b8",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about weak password\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('Password must be at least 8 characters long');",
+                  "});"
+                ],
+                "_lastExecutionId": "463ec9dd-6722-488f-8d1d-512213cad6b3"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "21ad3050-f194-44b8-b6f6-f5656abcd049",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "240",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test3@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"weak\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": {
+          "id": "1455a517-41f6-4248-8b65-2edf220a3c93",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:11 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "56"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              101,
+              114,
+              114,
+              111,
+              114,
+              34,
+              58,
+              32,
+              34,
+              80,
+              97,
+              115,
+              115,
+              119,
+              111,
+              114,
+              100,
+              32,
+              109,
+              117,
+              115,
+              116,
+              32,
+              98,
+              101,
+              32,
+              97,
+              116,
+              32,
+              108,
+              101,
+              97,
+              115,
+              116,
+              32,
+              56,
+              32,
+              99,
+              104,
+              97,
+              114,
+              97,
+              99,
+              116,
+              101,
+              114,
+              115,
+              32,
+              108,
+              111,
+              110,
+              103,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 88,
+          "responseSize": 56
+        },
+        "id": "6c0c12f7-88d1-4dea-a3f8-ca397b08f3d9",
+        "assertions": [
+          {
+            "assertion": "Status code is 400",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has error message about weak password",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "6ac4f5c7-6f4f-4ff7-80c1-0d87ed0f620e",
+          "length": 7,
+          "cycles": 1,
+          "position": 3,
+          "iteration": 0,
+          "httpRequestId": "204e3fad-ec79-4060-ab8b-eccf58d7b807"
+        },
+        "item": {
+          "id": "f4a6654e-782b-4825-9894-1ecc1364327c",
+          "name": "Register User - Invalid ID Type",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test_idtype@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Drivers License\",\n    \"id_value\": \"DL123456\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "e1ad9a09-1302-4dc4-ae4a-ad3b3edb698e",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about invalid ID type\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.include('Invalid ID type. Must be one of: Ghana Card, Passport');",
+                  "});"
+                ],
+                "_lastExecutionId": "ce642697-28ce-48d4-a965-a57e8391a386"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "9e384330-0cd8-4ae4-afba-852210f34c1e",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "257",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test_idtype@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Drivers License\",\n    \"id_value\": \"DL123456\"\n}"
+          }
+        },
+        "response": {
+          "id": "74fcdf0c-5bd1-4e9f-9ba0-fc37bee8a19f",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:11 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "66"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              101,
+              114,
+              114,
+              111,
+              114,
+              34,
+              58,
+              32,
+              34,
+              73,
+              110,
+              118,
+              97,
+              108,
+              105,
+              100,
+              32,
+              73,
+              68,
+              32,
+              116,
+              121,
+              112,
+              101,
+              46,
+              32,
+              77,
+              117,
+              115,
+              116,
+              32,
+              98,
+              101,
+              32,
+              111,
+              110,
+              101,
+              32,
+              111,
+              102,
+              58,
+              32,
+              71,
+              104,
+              97,
+              110,
+              97,
+              32,
+              67,
+              97,
+              114,
+              100,
+              44,
+              32,
+              80,
+              97,
+              115,
+              115,
+              112,
+              111,
+              114,
+              116,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 83,
+          "responseSize": 66
+        },
+        "id": "f4a6654e-782b-4825-9894-1ecc1364327c",
+        "assertions": [
+          {
+            "assertion": "Status code is 400",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has error message about invalid ID type",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "d98ab997-ce58-4fb6-971f-772d23c0458a",
+          "length": 7,
+          "cycles": 1,
+          "position": 4,
+          "iteration": 0,
+          "httpRequestId": "a0436107-b1d0-4d7e-9301-b7359a12daac"
+        },
+        "item": {
+          "id": "982435a8-7262-497b-a451-c576b09620fe",
+          "name": "Register User - Missing Required Fields",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "2c3d18ac-cd6f-46d1-8c9b-e0cc40d14393",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about missing fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.include('is required');",
+                  "});"
+                ],
+                "_lastExecutionId": "3cc6e2af-50d5-4cae-9077-6274c7976a5d"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "218a1876-861b-48f4-9dd5-267c041d261e",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "51",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\"\n}"
+          }
+        },
+        "response": {
+          "id": "35aae325-8199-4e60-abc9-a2abf6034a3f",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:12 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "30"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              101,
+              114,
+              114,
+              111,
+              114,
+              34,
+              58,
+              32,
+              34,
+              101,
+              109,
+              97,
+              105,
+              108,
+              32,
+              105,
+              115,
+              32,
+              114,
+              101,
+              113,
+              117,
+              105,
+              114,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 6,
+          "responseSize": 30
+        },
+        "id": "982435a8-7262-497b-a451-c576b09620fe",
+        "assertions": [
+          {
+            "assertion": "Status code is 400",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has error message about missing fields",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "a75d0c8d-7082-4f28-81f8-9a47854de873",
+          "length": 7,
+          "cycles": 1,
+          "position": 5,
+          "iteration": 0,
+          "httpRequestId": "cdeea871-866f-4c7a-9336-1eeb5e9485ba"
+        },
+        "item": {
+          "id": "c0913fdc-0da1-434a-95c2-2e6e7cf08b56",
+          "name": "Register User - Success",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"{{test_email}}\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "e4578428-5577-4d06-9fdd-b9c2a2ac58cb",
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a unique email using timestamp",
+                  "const timestamp = new Date().getTime();",
+                  "const email = `test_${timestamp}@example.com`;",
+                  "pm.environment.set('last_registered_email', email);",
+                  "pm.variables.set('test_email', email);"
+                ],
+                "_lastExecutionId": "752508b7-6da1-4fa9-9944-649b83ffdc06"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "c6b88e91-b413-4b1c-bc8b-0a19b6d09d9e",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has registration confirmation\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                  "    pm.expect(jsonData.is_verified).to.equal(false);",
+                  "});"
+                ],
+                "_lastExecutionId": "0e762842-633a-4aa0-a359-f35f450fbde5"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "f83f39f0-d972-43cd-bbe5-d1fadf33333b",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "266",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test_1745089392114@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+          }
+        },
+        "response": {
+          "id": "0f3d3e15-c268-4a4a-b300-ffedb7a79e9a",
+          "status": "Created",
+          "code": 201,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:13 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-User-Id",
+              "value": "32"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "133"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              32,
+              34,
+              82,
+              101,
+              103,
+              105,
+              115,
+              116,
+              114,
+              97,
+              116,
+              105,
+              111,
+              110,
+              32,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              102,
+              117,
+              108,
+              33,
+              32,
+              80,
+              108,
+              101,
+              97,
+              115,
+              101,
+              32,
+              119,
+              97,
+              105,
+              116,
+              32,
+              102,
+              111,
+              114,
+              32,
+              97,
+              99,
+              99,
+              111,
+              117,
+              110,
+              116,
+              32,
+              118,
+              101,
+              114,
+              105,
+              102,
+              105,
+              99,
+              97,
+              116,
+              105,
+              111,
+              110,
+              46,
+              34,
+              44,
+              32,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              34,
+              58,
+              32,
+              34,
+              112,
+              101,
+              110,
+              100,
+              105,
+              110,
+              103,
+              95,
+              118,
+              101,
+              114,
+              105,
+              102,
+              105,
+              99,
+              97,
+              116,
+              105,
+              111,
+              110,
+              34,
+              44,
+              32,
+              34,
+              105,
+              115,
+              95,
+              118,
+              101,
+              114,
+              105,
+              102,
+              105,
+              101,
+              100,
+              34,
+              58,
+              32,
+              102,
+              97,
+              108,
+              115,
+              101,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 959,
+          "responseSize": 133
+        },
+        "id": "c0913fdc-0da1-434a-95c2-2e6e7cf08b56",
+        "assertions": [
+          {
+            "assertion": "Status code is 201",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has registration confirmation",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "3e0afc34-38f2-44f1-ba08-60395463de74",
+          "length": 7,
+          "cycles": 1,
+          "position": 6,
+          "iteration": 0,
+          "httpRequestId": "4f5f37a5-1283-4a3a-a039-94d599ab09f4"
+        },
+        "item": {
+          "id": "0b318345-634d-47b6-b798-df002e9c5e89",
+          "name": "Register Property Seeker - Success",
+          "request": {
+            "description": {
+              "content": "Register a new property seeker user",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "user",
+                "register",
+                ""
+              ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"{{test_seeker_email}}\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"Test123!@#\",\n    \"role\": \"property_seeker\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-1\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "6219ebbd-b22d-4d6f-af96-16fb8e922cbf",
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a unique email using timestamp",
+                  "const timestamp = new Date().getTime();",
+                  "const email = `seeker_${timestamp}@example.com`;",
+                  "pm.environment.set('seeker_email', email);",
+                  "pm.variables.set('test_seeker_email', email);"
+                ],
+                "_lastExecutionId": "63bc3911-9522-4214-9361-2d871524b671"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "2d6436f0-ff24-4522-be8c-246c2450037e",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has registration confirmation\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                  "    pm.expect(jsonData.is_verified).to.equal(false);",
+                  "});",
+                  "",
+                  "// Extract and save the user ID from response headers",
+                  "const userId = pm.response.headers.get('X-User-Id');",
+                  "if (userId) {",
+                  "    pm.environment.set('seeker_id', userId);",
+                  "    console.log('Set seeker_id:', userId);",
+                  "}"
+                ],
+                "_lastExecutionId": "f01dbd18-ad2e-466f-87de-eeabd27a95a5"
+              }
+            }
+          ]
+        },
+        "request": {
+          "description": {
+            "content": "Register a new property seeker user",
+            "type": "text/plain"
+          },
+          "url": {
+            "protocol": "http",
+            "port": "8000",
+            "path": [
+              "api",
+              "user",
+              "register",
+              ""
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "0b032546-40a8-417d-b868-0b29081a981f",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:8000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "261",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"seeker_1745089393128@example.com\",\n    \"phone_number\": \"+233123456789\",\n    \"password\": \"Test123!@#\",\n    \"role\": \"property_seeker\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-1\"\n}"
+          }
+        },
+        "response": {
+          "id": "5e5b7f23-0bdb-4d0c-97a9-dad8bb8523cc",
+          "status": "Created",
+          "code": 201,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 19 Apr 2025 19:03:14 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "WSGIServer/0.2 CPython/3.13.1"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "X-User-Id",
+              "value": "33"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Content-Length",
+              "value": "133"
+            },
+            {
+              "key": "Vary",
+              "value": "origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              32,
+              34,
+              82,
+              101,
+              103,
+              105,
+              115,
+              116,
+              114,
+              97,
+              116,
+              105,
+              111,
+              110,
+              32,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              102,
+              117,
+              108,
+              33,
+              32,
+              80,
+              108,
+              101,
+              97,
+              115,
+              101,
+              32,
+              119,
+              97,
+              105,
+              116,
+              32,
+              102,
+              111,
+              114,
+              32,
+              97,
+              99,
+              99,
+              111,
+              117,
+              110,
+              116,
+              32,
+              118,
+              101,
+              114,
+              105,
+              102,
+              105,
+              99,
+              97,
+              116,
+              105,
+              111,
+              110,
+              46,
+              34,
+              44,
+              32,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              34,
+              58,
+              32,
+              34,
+              112,
+              101,
+              110,
+              100,
+              105,
+              110,
+              103,
+              95,
+              118,
+              101,
+              114,
+              105,
+              102,
+              105,
+              99,
+              97,
+              116,
+              105,
+              111,
+              110,
+              34,
+              44,
+              32,
+              34,
+              105,
+              115,
+              95,
+              118,
+              101,
+              114,
+              105,
+              102,
+              105,
+              101,
+              100,
+              34,
+              58,
+              32,
+              102,
+              97,
+              108,
+              115,
+              101,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 1064,
+          "responseSize": 133
+        },
+        "id": "0b318345-634d-47b6-b798-df002e9c5e89",
+        "assertions": [
+          {
+            "assertion": "Status code is 201",
+            "skipped": false
+          },
+          {
+            "assertion": "Response has registration confirmation",
+            "skipped": false
+          }
+        ]
+      }
+    ],
+    "transfers": {
+      "responseTotal": 518
+    },
+    "failures": [],
+    "error": null
+  }
+}

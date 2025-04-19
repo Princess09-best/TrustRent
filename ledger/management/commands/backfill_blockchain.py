@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.db import connections
 from django.utils import timezone
-from ledger.models import PropertyLedger, Block
+from ledger.models import Block
+from ledger.utils import calculate_block_hash
 import hashlib
 from django.core.files.storage import default_storage
 
@@ -79,9 +80,8 @@ class Command(BaseCommand):
                             'timestamp': timestamp
                         }
                         
-                        # Calculate current block hash
-                        data_string = f"{property_id}{owner_id}{document_hash}{block_number}{timestamp}"
-                        current_hash = hashlib.sha256(data_string.encode()).hexdigest()
+                        # Calculate current block hash using centralized utility
+                        current_hash = calculate_block_hash(block_data)
 
                         # Insert new block in ledger database
                         ledger_cursor.execute("""

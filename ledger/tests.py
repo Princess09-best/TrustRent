@@ -4,6 +4,10 @@ from django.test.utils import override_settings
 from django.db import connections
 from .models import Block, PropertyLedger
 import hashlib
+from django.core.management import call_command
+from io import StringIO
+from unittest.mock import patch, MagicMock
+from django.core.files.storage import default_storage
 
 @override_settings(DATABASES={
     'default': {
@@ -190,3 +194,77 @@ class BlockchainTests(TransactionTestCase):
         expected_hash = hashlib.sha256(data_string.encode()).hexdigest()
         
         self.assertEqual(block.current_hash, expected_hash)
+
+class BackfillCommandTest(TestCase):
+    databases = ['default', 'core', 'ledger']
+
+    def setUp(self):
+        # Create test property in core database
+        with connections['core'].cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO core_userproperty 
+                (owner_id, property_id, is_verified, verification_status, last_verified_at)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            """, [1, 'TEST_PROP', True, 'approved', timezone.now()])
+            self.user_property_id = cursor.fetchone()[0]
+
+    def test_backfill_hash_calculation(self):
+        """Test that backfill command calculates hashes consistently with PropertyLedger model"""
+        
+        # Mock document storage and hash calculation
+        test_doc_content = b"test document content"
+        test_doc_hash = hashlib.sha256(test_doc_content).hexdigest()
+        
+        with patch('django.core.files.storage.default_storage.open') as mock_open:
+            # Mock file reading
+            mock_file = MagicMock()
+            mock_file.read.return_value = test_doc_content
+            mock_open.return_value.__enter__.return_value = mock_file
+            
+            # Run backfill command
+            out = StringIO()
+            call_command('backfill_blockchain', stdout=out)
+            
+            # Get the created block from ledger database
+            with connections['ledger'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT current_hash, property_id, owner_id, document_hash, block_number, timestamp
+                    FROM ledger_block 
+                    WHERE property_id = 'TEST_PROP'
+                """)
+                block = cursor.fetchone()
+                
+                # Verify block was created
+                self.assertIsNotNone(block)
+                
+                # Calculate hash using PropertyLedger model method
+                block_data = {
+                    'property_id': block[1],
+                    'owner_id': block[2],
+                    'document_hash': block[3],
+                    'block_number': block[4],
+                    'timestamp': block[5]
+                }
+                expected_hash = PropertyLedger._calculate_hash(block_data)
+                
+                # Compare hashes
+                self.assertEqual(block[0], expected_hash)
+                
+                # Verify transaction hash was updated in core database
+                with connections['core'].cursor() as core_cursor:
+                    core_cursor.execute("""
+                        SELECT transaction_hash 
+                        FROM core_userproperty 
+                        WHERE id = %s
+                    """, [self.user_property_id])
+                    transaction_hash = core_cursor.fetchone()[0]
+                    
+                    self.assertEqual(transaction_hash, expected_hash)
+
+    def tearDown(self):
+        # Clean up test data
+        with connections['core'].cursor() as cursor:
+            cursor.execute("DELETE FROM core_userproperty WHERE id = %s", [self.user_property_id])
+        with connections['ledger'].cursor() as cursor:
+            cursor.execute("DELETE FROM ledger_block WHERE property_id = 'TEST_PROP'")

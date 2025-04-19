@@ -6,105 +6,309 @@
     },
     "item": [
         {
-            "name": "Register Property on TrustChain",
-            "request": {
-                "method": "POST",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{access_token}}",
-                        "type": "text"
-                    },
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json",
-                        "type": "text"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n    \"property_id\": \"PROP_1\",\n    \"owner_id\": {{owner_id}},\n    \"document_hash\": \"{{$randomUUID}}\"\n}"
-                },
-                "url": {
-                    "raw": "{{base_url}}/api/trustchain/register/",
-                    "host": ["{{base_url}}"],
-                    "path": ["api", "trustchain", "register"]
-                }
-            },
-            "response": []
-        },
-        {
-            "name": "Verify Chain Integrity",
-            "request": {
-                "method": "GET",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{access_token}}",
-                        "type": "text"
-                    }
-                ],
-                "url": {
-                    "raw": "{{base_url}}/api/trustchain/verify-chain/",
-                    "host": ["{{base_url}}"],
-                    "path": ["api", "trustchain", "verify-chain"]
-                }
-            },
-            "response": []
-        },
-        {
-            "name": "Get Property History",
-            "request": {
-                "method": "GET",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{access_token}}",
-                        "type": "text"
-                    }
-                ],
-                "url": {
-                    "raw": "{{base_url}}/api/trustchain/property-history/PROP_1/",
-                    "host": ["{{base_url}}"],
-                    "path": ["api", "trustchain", "property-history", "PROP_1"]
-                }
-            },
-            "response": []
-        },
-        {
-            "name": "Verify Property Ownership",
-            "request": {
-                "method": "GET",
-                "header": [
-                    {
-                        "key": "Authorization",
-                        "value": "Bearer {{access_token}}",
-                        "type": "text"
-                    }
-                ],
-                "url": {
-                    "raw": "{{base_url}}/api/trustchain/verify-ownership/?property_id=PROP_1&owner_id={{owner_id}}",
-                    "host": ["{{base_url}}"],
-                    "path": ["api", "trustchain", "verify-ownership"],
-                    "query": [
+            "name": "Setup",
+            "item": [
+                {
+                    "name": "Login User - Success",
+                    "event": [
                         {
-                            "key": "property_id",
-                            "value": "PROP_1"
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "// Verify required variables exist",
+                                    "const email = pm.environment.get('last_registered_email');",
+                                    "if (!email) {",
+                                    "    throw new Error('last_registered_email environment variable is not set. Please run the registration test first.');",
+                                    "}",
+                                    "console.log('Using email:', email);"
+                                ],
+                                "type": "text/javascript"
+                            }
                         },
                         {
-                            "key": "owner_id",
-                            "value": "{{owner_id}}"
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response has login confirmation and save token\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('message');",
+                                    "    pm.expect(jsonData).to.have.property('role');",
+                                    "    pm.expect(jsonData).to.have.property('is_verified');",
+                                    "    pm.expect(jsonData).to.have.property('name');",
+                                    "    pm.expect(jsonData).to.have.property('token');",
+                                    "",
+                                    "    // Save the token",
+                                    "    if (jsonData.token) {",
+                                    "        pm.environment.set('auth_token', jsonData.token);",
+                                    "        console.log('Auth token set:', jsonData.token);",
+                                    "",
+                                    "        // Extract user_id from token and set as owner_id",
+                                    "        try {",
+                                    "            const tokenParts = jsonData.token.split('.');",
+                                    "            const payload = JSON.parse(atob(tokenParts[1]));",
+                                    "            if (payload.user_id) {",
+                                    "                pm.environment.set('owner_id', payload.user_id);",
+                                    "                console.log('Owner ID set:', payload.user_id);",
+                                    "            }",
+                                    "        } catch (e) {",
+                                    "            console.error('Failed to extract user_id from token:', e);",
+                                    "        }",
+                                    "    } else {",
+                                    "        console.error('No token found in response');",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{last_registered_email}}\",\n    \"password\": \"StrongP@ssw0rd123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/login/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "login", ""]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Chain Verification",
+            "item": [
+                {
+                    "name": "Verify Chain Integrity",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "const token = pm.environment.get('auth_token');",
+                                    "if (!token) {",
+                                    "    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+                                    "}",
+                                    "console.log('Using auth token:', token);",
+                                    "",
+                                    "// Verify token format",
+                                    "if (!token.split('.').length === 3) {",
+                                    "    console.warn('Warning: Token does not appear to be in JWT format');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{auth_token}}",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/verify-chain/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "verify-chain", ""]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "// Log the full request for debugging",
+                                    "console.log('Request headers:', request.headers);",
+                                    "",
+                                    "if (pm.response.code === 401) {",
+                                    "    console.log('Auth failed. Token used:', pm.environment.get('auth_token'));",
+                                    "    console.log('Response:', pm.response.text());",
+                                    "}",
+                                    "",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Chain is valid\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('is_valid', true);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
                         }
                     ]
                 }
-            },
-            "response": []
+            ]
+        },
+        {
+            "name": "Property History",
+            "item": [
+                {
+                    "name": "Get Property History",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "if (!pm.environment.get('auth_token')) {",
+                                    "    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+                                    "}",
+                                    "if (!pm.environment.get('property_id')) {",
+                                    "    throw new Error('property_id environment variable is not set.');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{auth_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/property-history/{{property_id}}/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "property-history", "{{property_id}}", ""]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response contains history\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('history');",
+                                    "    pm.expect(jsonData.history).to.be.an('array');",
+                                    "    if (jsonData.history.length > 0) {",
+                                    "        pm.expect(jsonData.history[0]).to.have.property('property_id');",
+                                    "        pm.expect(jsonData.history[0]).to.have.property('owner_id');",
+                                    "        pm.expect(jsonData.history[0]).to.have.property('timestamp');",
+                                    "        // Additional properties that should be present",
+                                    "        pm.expect(jsonData.history[0]).to.have.property('block_number');",
+                                    "        pm.expect(jsonData.history[0]).to.have.property('current_hash');",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Ownership Verification",
+            "item": [
+                {
+                    "name": "Verify Property Ownership",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "if (!pm.environment.get('auth_token')) {",
+                                    "    throw new Error('auth_token environment variable is not set. Please run the login test first.');",
+                                    "}",
+                                    "if (!pm.environment.get('property_id')) {",
+                                    "    throw new Error('property_id environment variable is not set.');",
+                                    "}",
+                                    "if (!pm.environment.get('owner_id')) {",
+                                    "    throw new Error('owner_id environment variable is not set. Please run the login test first.');",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{auth_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/verify-ownership/?property_id={{property_id}}&owner_id={{owner_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "verify-ownership", ""],
+                            "query": [
+                                {
+                                    "key": "property_id",
+                                    "value": "{{property_id}}"
+                                },
+                                {
+                                    "key": "owner_id",
+                                    "value": "{{owner_id}}"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response contains ownership info\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('is_owner');",
+                                    "    pm.expect(jsonData).to.have.property('verification_date');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
         }
     ],
     "variable": [
         {
             "key": "base_url",
-            "value": "http://localhost:8000"
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "property_id",
+            "value": "PROP_1"
         }
     ]
 } 
