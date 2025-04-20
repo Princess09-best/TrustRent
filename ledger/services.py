@@ -1,101 +1,193 @@
 from django.utils import timezone
 import uuid
 from datetime import timedelta
-from .models import SmartContract, Block
+from .models import Block, PropertyLedger, SmartContract
 
 class SmartContractService:
-    """Service class for managing property ownership verification smart contracts"""
+    """Service class for managing property ownership verification through smart contracts"""
     
     @classmethod
-    def create_verification_contract(cls, property_id: str, owner_id: int, requester_id: int) -> tuple:
-        """
-        Creates a new ownership verification smart contract
-        Returns (success, message, contract)
-        """
+    def create_verification_request(cls, property_id: str, claimed_owner_id: int, requester_id: int) -> tuple:
+        """Creates a new ownership verification request"""
         try:
-            # Generate unique contract ID
-            contract_id = uuid.uuid4().hex
+            # Generate unique verification ID
+            contract_id = f"VER_{uuid.uuid4().hex[:16]}"
             
-            # Set expiry date (24 hours from creation)
-            expiry_date = timezone.now() + timedelta(hours=24)
+            # Check if property exists in blockchain
+            latest_block = Block.objects.filter(
+                property_id=str(PropertyLedger._extract_property_number(property_id))
+            ).order_by('-block_number').first()
             
-            # Create contract
+            if not latest_block:
+                return False, "Property not found in blockchain", None
+
+            # Create contract with automatic execution conditions
             contract = SmartContract.objects.create(
                 contract_id=contract_id,
                 property_id=property_id,
-                owner_id=owner_id,
+                owner_id=claimed_owner_id,
                 requester_id=requester_id,
-                expiry_date=expiry_date,
-                verification_data={
-                    'request_timestamp': timezone.now().isoformat(),
-                    'verification_rules': {
-                        'ownership_check': True,
-                        'expiry_check': True
-                    }
+                contract_type='ownership_verification',
+                status='created',
+                expiry_date=timezone.now() + timedelta(hours=24),
+                trigger_type='condition',
+                trigger_conditions={
+                    'document_required': False,  # No document needed for simple verification
+                    'auto_execute': True  # Execute immediately if possible
                 }
             )
             
-            # Transition to pending verification
-            if contract.transition_to('pending_verification'):
-                return True, "Contract created successfully", contract
+            # Try to execute immediately if conditions are met
+            if contract.trigger_conditions.get('auto_execute'):
+                success, result = contract.auto_execute()
+                if success:
+                    return True, "Verification completed automatically", contract_id
             
-            return False, "Failed to transition contract state", None
+            return True, "Verification request created", contract_id
             
         except Exception as e:
             return False, str(e), None
-    
+
     @classmethod
-    def execute_verification(cls, contract_id: str) -> tuple:
+    def create_property_transfer_contract(cls, property_id: str, current_owner_id: int, 
+                                        new_owner_id: int, requester_id: int,
+                                        require_document: bool = True) -> tuple:
+        """Creates a new property transfer contract"""
+        try:
+            contract_id = f"TRF_{uuid.uuid4().hex[:16]}"
+            
+            # Set up trigger conditions based on requirements
+            trigger_conditions = {
+                'new_owner_id': new_owner_id,
+                'document_required': require_document,
+                'required_events': ['document_uploaded'] if require_document else []
+            }
+            
+            contract = SmartContract.objects.create(
+                contract_id=contract_id,
+                property_id=property_id,
+                owner_id=current_owner_id,
+                requester_id=requester_id,
+                contract_type='property_transfer',
+                status='created',
+                expiry_date=timezone.now() + timedelta(days=7),
+                trigger_type='event' if require_document else 'condition',
+                trigger_conditions=trigger_conditions
+            )
+            
+            # If no document required, try to execute immediately
+            if not require_document:
+                success, result = contract.auto_execute()
+                if success:
+                    return True, "Property transfer executed automatically", contract_id
+            
+            return True, "Property transfer contract created", contract_id
+            
+        except Exception as e:
+            return False, str(e), None
+
+    @classmethod
+    def handle_document_upload(cls, contract_id: str, document_hash: str) -> tuple:
+        """Handle document upload event for a contract"""
+        try:
+            contract = SmartContract.objects.get(contract_id=contract_id)
+            
+            # Record document upload event
+            contract.verification_data['document_hash'] = document_hash
+            contract.record_event('document_uploaded', {'hash': document_hash})
+            
+            # Contract might auto-execute if this was the last required event
+            return True, "Document recorded and contract execution triggered"
+            
+        except SmartContract.DoesNotExist:
+            return False, "Contract not found"
+        except Exception as e:
+            return False, str(e)
+
+    @classmethod
+    def check_pending_contracts(cls):
         """
-        Executes an ownership verification contract
+        Check and execute pending contracts that meet their conditions
+        This can be run periodically via a management command or celery task
+        """
+        pending_contracts = SmartContract.objects.filter(
+            status__in=['created', 'pending_verification']
+        )
+        
+        results = []
+        for contract in pending_contracts:
+            success, result = contract.auto_execute()
+            results.append({
+                'contract_id': contract.contract_id,
+                'success': success,
+                'result': result
+            })
+        
+        return results
+
+    @classmethod
+    def verify_ownership(cls, verification_id: str) -> tuple:
+        """
+        Verifies property ownership claim
         Returns (success, result)
         """
         try:
-            # Get contract
-            contract = SmartContract.objects.get(contract_id=contract_id)
+            # Get verification request
+            contract = SmartContract.objects.get(contract_id=verification_id)
             
-            # Check if contract is expired
+            # Check expiry
             if timezone.now() > contract.expiry_date:
-                contract.transition_to('expired')
-                return False, "Contract has expired"
+                contract.status = 'expired'
+                contract.save()
+                return False, "Verification request has expired"
             
-            # Check if contract is in correct state
-            if contract.status != 'pending_verification':
-                return False, f"Invalid contract status: {contract.status}"
+            # Execute the contract
+            success, result = contract.auto_execute()
             
-            # Execute verification
-            success, result = contract.verify_ownership()
+            if not success:
+                return False, result
             
-            return success, result
+            return True, {
+                'verification_id': contract.contract_id,
+                'status': contract.status,
+                'is_owner': contract.verification_data.get('is_owner', False),
+                'message': result.get('message', 'Verification completed'),
+                'verified_at': contract.executed_at.isoformat() if contract.executed_at else None
+            }
             
         except SmartContract.DoesNotExist:
-            return False, "Contract not found"
+            return False, "Verification request not found"
         except Exception as e:
             return False, str(e)
     
     @classmethod
-    def get_contract_status(cls, contract_id: str) -> tuple:
+    def get_verification_status(cls, verification_id: str) -> tuple:
         """
-        Gets the current status and details of a contract
+        Gets the current status of a verification request
         Returns (success, details)
         """
         try:
-            contract = SmartContract.objects.get(contract_id=contract_id)
+            contract = SmartContract.objects.get(contract_id=verification_id)
+            
             return True, {
-                'contract_id': contract.contract_id,
-                'status': contract.status,
+                'verification_id': contract.contract_id,
                 'property_id': contract.property_id,
-                'owner_id': contract.owner_id,
+                'claimed_owner_id': contract.owner_id,
                 'requester_id': contract.requester_id,
-                'created_at': contract.created_at,
-                'executed_at': contract.executed_at,
-                'expiry_date': contract.expiry_date,
-                'verification_data': contract.verification_data
+                'status': contract.status,
+                'created_at': contract.created_at.isoformat(),
+                'expires_at': contract.expiry_date.isoformat(),
+                'verification_data': contract.verification_data,
+                'execution_result': contract.execution_result
             }
         except SmartContract.DoesNotExist:
-            return False, "Contract not found"
+            return False, "Verification request not found"
         except Exception as e:
             return False, str(e)
+    
+    # In-memory storage for verification requests
+    # In production, this should be moved to a proper cache (e.g., Redis)
+    _verification_requests = {}
 
     @staticmethod
     def create_ownership_transfer_contract(property_id, current_owner_id, new_owner_id, document_hash=None, verifier_id=None):

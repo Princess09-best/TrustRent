@@ -6,6 +6,9 @@ from rest_framework import status
 from django.utils import timezone
 from .models import PropertyLedger, Block
 from .services import SmartContractService
+from core.models import Property, UserProperty
+import json
+from .serializers import BlockSerializer
 
 # Create your views here.
 
@@ -14,37 +17,40 @@ from .services import SmartContractService
 def register_property_on_chain(request):
     """Register a property on TrustChain"""
     try:
-        property_id = request.data.get('property_id')
-        owner_id = request.data.get('owner_id')
-        document_hash = request.data.get('document_hash')
-        
-        if not all([property_id, owner_id]):
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        document_hash = data.get('document_hash')
+
+        if not property_id or not document_hash:
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify property ownership
+        try:
+            user_property = UserProperty.objects.get(
+                property_id=property_id,
+                owner=request.user,
+                is_active=True,
+                is_verified=True
+            )
+        except UserProperty.DoesNotExist:
             return Response({
-                'error': 'property_id and owner_id are required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
-        success, message, block = PropertyLedger.register_property(
+                'error': 'Property not found or you do not have permission'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Create ledger entry
+        ledger = PropertyLedger()
+        block = ledger.register_property(
             property_id=property_id,
-            owner_id=owner_id,
+            owner_id=request.user.id,
             document_hash=document_hash
         )
-        
-        if not success:
-            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         return Response({
-            'message': message,
-            'block': {
-                'block_number': block.block_number,
-                'property_id': block.property_id,
-                'owner_id': block.owner_id,
-                'document_hash': block.document_hash,
-                'current_hash': block.current_hash,
-                'previous_hash': block.previous_hash,
-                'timestamp': block.timestamp
-            }
+            'message': 'Property registered on blockchain successfully',
+            'block_number': block.block_number,
+            'current_hash': block.current_hash
         }, status=status.HTTP_201_CREATED)
-            
+
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -53,11 +59,14 @@ def register_property_on_chain(request):
 def verify_chain_integrity(request):
     """Verify the integrity of the entire blockchain"""
     try:
-        is_valid, message = PropertyLedger.verify_chain()
+        ledger = PropertyLedger()
+        is_valid = ledger.verify_chain()
+        
         return Response({
             'is_valid': is_valid,
-            'message': message
+            'message': 'Blockchain integrity verified' if is_valid else 'Blockchain integrity compromised'
         })
+
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -66,21 +75,16 @@ def verify_chain_integrity(request):
 def get_property_history(request, property_id):
     """Get the complete history of a property from the blockchain"""
     try:
-        blocks = PropertyLedger.get_property_history(property_id)
-        history = []
-        
-        for block in blocks:
-            history.append({
-                'block_number': block.block_number,
-                'property_id': block.property_id,
-                'owner_id': block.owner_id,
-                'document_hash': block.document_hash,
-                'current_hash': block.current_hash,
-                'previous_hash': block.previous_hash,
-                'timestamp': block.timestamp
-            })
-            
-        return Response({'history': history})
+        property = Property.objects.get(id=property_id)
+        history = PropertyLedger.get_property_history(property_id)
+        serializer = BlockSerializer(history, many=True)
+        return Response({
+            'property_id': property_id,
+            'property_title': property.title,
+            'history': serializer.data
+        })
+    except Property.DoesNotExist:
+        return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -107,20 +111,20 @@ def verify_ownership(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def create_ownership_contract(request):
-    """Create a new ownership verification contract"""
+def create_ownership_verification(request):
+    """Create a new ownership verification request"""
     try:
         property_id = request.data.get('property_id')
-        owner_id = request.data.get('owner_id')
+        claimed_owner_id = request.data.get('claimed_owner_id')
         
-        if not all([property_id, owner_id]):
+        if not all([property_id, claimed_owner_id]):
             return Response({
-                'error': 'property_id and owner_id are required'
+                'error': 'property_id and claimed_owner_id are required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        success, message, contract = SmartContractService.create_verification_contract(
+        success, message, verification_id = SmartContractService.create_verification_request(
             property_id=property_id,
-            owner_id=int(owner_id),
+            claimed_owner_id=int(claimed_owner_id),
             requester_id=request.user.id
         )
         
@@ -129,11 +133,9 @@ def create_ownership_contract(request):
             
         return Response({
             'message': message,
-            'contract': {
-                'contract_id': contract.contract_id,
-                'status': contract.status,
-                'created_at': contract.created_at,
-                'expiry_date': contract.expiry_date
+            'verification': {
+                'verification_id': verification_id,
+                'status': 'pending'
             }
         }, status=status.HTTP_201_CREATED)
             
@@ -142,10 +144,10 @@ def create_ownership_contract(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def execute_contract(request, contract_id):
-    """Execute a smart contract"""
+def execute_verification(request, verification_id):
+    """Execute ownership verification"""
     try:
-        success, result = SmartContractService.execute_verification(contract_id)
+        success, result = SmartContractService.verify_ownership(verification_id)
         
         if not success:
             return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
@@ -157,15 +159,58 @@ def execute_contract(request, contract_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_contract_status(request, contract_id):
-    """Get the status of a smart contract"""
+def get_verification_status(request, verification_id):
+    """Get the status of an ownership verification request"""
     try:
-        success, result = SmartContractService.get_contract_status(contract_id)
+        success, result = SmartContractService.get_verification_status(verification_id)
         
         if not success:
             return Response({'error': result}, status=status.HTTP_404_NOT_FOUND)
             
         return Response(result, status=status.HTTP_200_OK)
             
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def migrate_hashes(request):
+    try:
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        old_hash = data.get('old_hash')
+        new_hash = data.get('new_hash')
+
+        if not all([property_id, old_hash, new_hash]):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify property ownership
+        try:
+            user_property = UserProperty.objects.get(
+                property_id=property_id,
+                owner=request.user,
+                is_active=True,
+                is_verified=True
+            )
+        except UserProperty.DoesNotExist:
+            return Response({
+                'error': 'Property not found or you do not have permission'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Migrate hashes
+        ledger = PropertyLedger()
+        block = ledger.migrate_hashes(
+            property_id=property_id,
+            old_hash=old_hash,
+            new_hash=new_hash,
+            owner_id=request.user.id
+        )
+
+        return Response({
+            'message': 'Document hashes migrated successfully',
+            'block_number': block.block_number,
+            'current_hash': block.current_hash
+        }, status=status.HTTP_201_CREATED)
+
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

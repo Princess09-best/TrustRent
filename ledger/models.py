@@ -259,7 +259,7 @@ class PropertyLedger:
 class SmartContract(models.Model):
     """
     Smart Contract model for property ownership verification.
-    Implements a state machine pattern for contract execution.
+    Implements an event-driven state machine pattern for automated contract execution.
     """
     CONTRACT_STATUS = [
         ('created', 'Created'),
@@ -269,50 +269,120 @@ class SmartContract(models.Model):
         ('expired', 'Expired')
     ]
 
+    CONTRACT_TYPES = [
+        ('ownership_verification', 'Ownership Verification'),
+        ('property_transfer', 'Property Transfer'),
+        ('document_verification', 'Document Verification')
+    ]
+
+    TRIGGER_TYPES = [
+        ('time', 'Time-based'),
+        ('event', 'Event-based'),
+        ('condition', 'Condition-based')
+    ]
+
     contract_id = models.CharField(max_length=64, unique=True)
     property_id = models.CharField(max_length=100)
     owner_id = models.IntegerField()
     requester_id = models.IntegerField()
+    contract_type = models.CharField(max_length=50, choices=CONTRACT_TYPES)
     status = models.CharField(max_length=20, choices=CONTRACT_STATUS, default='created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     executed_at = models.DateTimeField(null=True)
     expiry_date = models.DateTimeField()
+    trigger_type = models.CharField(max_length=20, choices=TRIGGER_TYPES)
+    trigger_conditions = models.JSONField(default=dict)  # Stores conditions that trigger execution
     verification_data = models.JSONField(default=dict)  # Stores verification rules and results
+    execution_result = models.JSONField(default=dict)  # Stores the result of contract execution
 
     class Meta:
         db_table = 'ledger_smart_contract'
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Contract {self.contract_id} - Property {self.property_id}"
-
-    def can_transition_to(self, new_status):
-        """Validates if the contract can transition to the new status"""
-        valid_transitions = {
-            'created': ['pending_verification'],
-            'pending_verification': ['verified', 'rejected'],
-            'verified': ['expired'],
-            'rejected': ['expired'],
-            'expired': []
-        }
-        return new_status in valid_transitions.get(self.status, [])
+        return f"Contract {self.contract_id} - {self.contract_type} - {self.status}"
 
     def transition_to(self, new_status):
-        """Transitions the contract to a new status if valid"""
-        if self.can_transition_to(new_status):
-            self.status = new_status
-            if new_status in ['verified', 'rejected']:
-                self.executed_at = timezone.now()
-            self.save()
+        """Transitions the contract to a new status"""
+        self.status = new_status
+        if new_status in ['verified', 'rejected']:
+            self.executed_at = timezone.now()
+        self.save()
+
+    def check_trigger_conditions(self):
+        """Check if the contract's trigger conditions are met"""
+        # For ownership verification with auto_execute, we can proceed immediately
+        if self.contract_type == 'ownership_verification' and self.trigger_conditions.get('auto_execute', False):
             return True
+
+        if self.trigger_type == 'time':
+            # Check time-based triggers
+            current_time = timezone.now()
+            if 'execution_time' in self.trigger_conditions:
+                execution_time = parse_datetime(self.trigger_conditions['execution_time'])
+                return current_time >= execution_time
+            if 'expiry_check' in self.trigger_conditions and current_time >= self.expiry_date:
+                self.transition_to('expired')
+                return True
+                
+        elif self.trigger_type == 'event':
+            # Check event-based triggers
+            if 'required_events' in self.trigger_conditions:
+                required_events = set(self.trigger_conditions['required_events'])
+                occurred_events = set(self.verification_data.get('events', []))
+                return required_events.issubset(occurred_events)
+                
+        elif self.trigger_type == 'condition':
+            # Check condition-based triggers
+            if self.trigger_conditions.get('auto_execute', False):
+                return True
+            if 'document_required' in self.trigger_conditions:
+                return bool(self.verification_data.get('document_hash'))
+                
         return False
 
+    def auto_execute(self):
+        """
+        Attempt to automatically execute the contract if conditions are met
+        Returns (success, message)
+        """
+        if not self.check_trigger_conditions():
+            return False, "Trigger conditions not met"
+
+        if self.status in ['verified', 'rejected', 'expired']:
+            return False, f"Contract already in final state: {self.status}"
+
+        try:
+            if self.contract_type == 'ownership_verification':
+                return self.verify_ownership()
+            elif self.contract_type == 'property_transfer':
+                return self.execute_property_transfer()
+            elif self.contract_type == 'document_verification':
+                return self.verify_document()
+            
+            return False, f"Unsupported contract type: {self.contract_type}"
+            
+        except Exception as e:
+            return False, f"Error executing contract: {str(e)}"
+
+    def record_event(self, event_type, event_data=None):
+        """Record an event that might trigger contract execution"""
+        events = self.verification_data.get('events', [])
+        events.append({
+            'type': event_type,
+            'data': event_data,
+            'timestamp': timezone.now().isoformat()
+        })
+        self.verification_data['events'] = events
+        self.save()
+        
+        # Check if this event triggers execution
+        if self.trigger_type == 'event':
+            self.auto_execute()
+
     def verify_ownership(self):
-        """
-        Executes the ownership verification logic.
-        Returns (success, result_dict)
-        """
+        """Execute ownership verification logic"""
         try:
             # Get the latest block for this property
             latest_block = Block.objects.filter(
@@ -336,7 +406,6 @@ class SmartContract(models.Model):
             # Update contract status
             new_status = 'verified' if is_owner else 'rejected'
             self.transition_to(new_status)
-            self.save()
 
             return True, {
                 'is_owner': is_owner,
@@ -344,6 +413,38 @@ class SmartContract(models.Model):
                 'contract_id': self.contract_id,
                 'status': self.status
             }
+
+        except Exception as e:
+            return False, str(e)
+
+    def execute_property_transfer(self):
+        """Execute property transfer logic"""
+        try:
+            if 'new_owner_id' not in self.trigger_conditions:
+                return False, "New owner not specified"
+
+            new_owner_id = self.trigger_conditions['new_owner_id']
+            document_hash = self.verification_data.get('document_hash')
+
+            # Register the transfer on blockchain
+            success, message, block = PropertyLedger.register_property(
+                property_id=self.property_id,
+                owner_id=new_owner_id,
+                document_hash=document_hash,
+                verified_by=self.requester_id
+            )
+
+            if success:
+                self.transition_to('verified')
+                self.execution_result = {
+                    'success': True,
+                    'block_number': block.block_number,
+                    'transaction_hash': block.current_hash
+                }
+                self.save()
+                return True, "Property transfer executed successfully"
+
+            return False, f"Transfer failed: {message}"
 
         except Exception as e:
             return False, str(e)

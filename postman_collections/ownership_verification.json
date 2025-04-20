@@ -1,0 +1,120 @@
+{
+    "info": {
+        "name": "TrustRent - Ownership Verification",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Create Ownership Verification",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"property_id\": \"16\",\n    \"claimed_owner_id\": 36\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/verify/create/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "verify", "create", ""]
+                },
+                "description": "Create a new ownership verification request"
+            }
+        },
+        {
+            "name": "Get Verification Status",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "verify", "{{verification_id}}", "status", ""]
+                },
+                "description": "Get the status of a verification request"
+            }
+        },
+        {
+            "name": "Execute Verification",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/execute/",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "verify", "{{verification_id}}", "execute", ""]
+                },
+                "description": "Execute a verification request (though it should happen automatically)"
+            }
+        },
+        {
+            "name": "Direct Ownership Verification",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/trustchain/verify-ownership/?property_id=16&owner_id=36",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "trustchain", "verify-ownership", ""],
+                    "query": [
+                        {
+                            "key": "property_id",
+                            "value": "16"
+                        },
+                        {
+                            "key": "owner_id",
+                            "value": "36"
+                        }
+                    ]
+                },
+                "description": "Directly verify ownership without creating a contract"
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "auth_token",
+            "value": "your_token_here",
+            "type": "string"
+        },
+        {
+            "key": "verification_id",
+            "value": "VER_xxxxxxxx",
+            "type": "string"
+        }
+    ]
+} 

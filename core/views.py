@@ -147,9 +147,9 @@ def login_user(request):
                     'is_verified': False
                 }, status=403)
 
-            # Generate JWT token
-            refresh = RefreshToken()
-            refresh['user_id'] = user.id
+            # Generate JWT token properly using for_user
+            refresh = RefreshToken.for_user(user)
+            # Add custom claims
             refresh['email'] = user.email
             refresh['role'] = user.role
 
@@ -160,6 +160,7 @@ def login_user(request):
             return JsonResponse({
                 'message': 'Login successful',
                 'token': str(refresh.access_token),
+                'refresh_token': str(refresh),
                 'role': user.role,
                 'is_verified': user.is_verified,
                 'name': f"{user.firstname} {user.lastname}"
@@ -228,160 +229,112 @@ def verify_user(request):
     
 
 # Creating a property by property owner only
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_property(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Only POST allowed'}, status=405)
-
     try:
         data = json.loads(request.body)
 
-        required_fields = ['title', 'property_type', 'description', 'location', 'owner_id']
+        required_fields = ['title', 'property_type', 'description', 'location']
         missing = [f for f in required_fields if f not in data]
         if missing:
-            return JsonResponse({'error': f'Missing fields: {", ".join(missing)}'}, status=400)
+            return Response({'error': f'Missing fields: {", ".join(missing)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get owner_id from authenticated user
+        owner_id = request.user.id
 
         # Validate property type
         valid_property_types = [choice[0] for choice in Property.PROPERTY_TYPE_CHOICES]
         if data['property_type'] not in valid_property_types:
-            return JsonResponse({
+            return Response({
                 'error': f'Invalid property type. Must be one of: {", ".join(valid_property_types)}'
-            }, status=400)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if property with same title and location exists
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                SELECT id FROM core_property 
-                WHERE title = %s AND location = %s
-                """, [data['title'], data['location']])
-            if cursor.fetchone():
-                return JsonResponse({
-                    'error': 'A property with this title and location already exists'
-                }, status=400)
+        # Create property
+        property = Property.objects.create(
+            title=data['title'],
+            property_type=data['property_type'],
+            description=data['description'],
+            location=data['location'],
+            status='pending_verification'
+        )
 
-            # Create Property
-            cursor.execute("""
-                INSERT INTO core_property 
-                (title, property_type, description, location, status, created_at) 
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-                """, [
-                    data['title'],
-                    data['property_type'],
-                    data['description'],
-                    data['location'],
-                    'unlisted',
-                    timezone.now()
-                ])
-            property_id = cursor.fetchone()[0]
+        # Create user property association
+        user_property = UserProperty.objects.create(
+            property=property,
+            owner_id=owner_id,
+            is_verified=False,
+            is_active=True
+        )
 
-            # Creating a UserProperty entry
-            cursor.execute("""
-                INSERT INTO core_userproperty 
-                (owner_id, property_id, is_verified, is_active, verification_status, transaction_hash, created_at) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-                """, [
-                    data['owner_id'],
-                    property_id,
-                    False,
-                    True,
-                    'pending',
-                    '',  # Empty transaction hash for now
-                    timezone.now()
-                ])
-            user_property_id = cursor.fetchone()[0]
-
-        response = JsonResponse({
-            'message': 'Property created successfully. You will be notified once the property is verified.',
+        return Response({
+            'message': 'Property created successfully. Awaiting verification.',
+            'property_id': property.id,
+            'user_property_id': user_property.id,
             'status': 'pending_verification'
-        }, status=201)
-        
-        # Add property_id and user_property_id in custom headers
-        response['X-Resource-Id'] = str(property_id)
-        response['X-UserProperty-Id'] = str(user_property_id)
-        return response
+        }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
-        if 'unique_property_title_location' in str(e):
-            return JsonResponse({
-                'error': 'A property with this title and location already exists'
-            }, status=400)
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# Uploading a document by property owner only
-@csrf_exempt
-@require_POST
+# Uploading a document
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_document(request):
     try:
-        user_id = request.POST.get('user_id')
         property_id = request.POST.get('property_id')
         file = request.FILES.get('attachment')
 
-        if not user_id or not property_id or not file:
-            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        if not property_id or not file:
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate file type
         if not file.name.lower().endswith('.pdf'):
-            return JsonResponse({
+            return Response({
                 'error': 'Invalid file type. Only PDF documents are allowed.'
-            }, status=400)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # Additional validation for PDF mime type
         if file.content_type != 'application/pdf':
-            return JsonResponse({
-                'error': 'Invalid file type. File must be a valid PDF document.'
-            }, status=400)
+            return Response({
+                'error': 'Invalid file type. Only PDF documents are allowed.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Verify ownership and get current status
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                SELECT id, verification_status 
-                FROM core_userproperty 
-                WHERE owner_id = %s AND property_id = %s
-                """, [user_id, property_id])
-            
-            result = cursor.fetchone()
-            if not result:
-                return JsonResponse({'error': 'User is not the owner of this property'}, status=404)
-            
-            user_property_id = result[0]
-            current_status = result[1]
+        # Get user property and verify ownership
+        try:
+            user_property = UserProperty.objects.get(
+                property_id=property_id,
+                owner=request.user,
+                is_active=True
+            )
+        except UserProperty.DoesNotExist:
+            return Response({
+                'error': 'Property not found or you do not have permission'
+            }, status=status.HTTP_404_NOT_FOUND)
 
-            # Save the file with a PDF extension
-            file_name = f"{user_property_id}_{file.name}"
-            saved_file_path = default_storage.save(f'title_deeds/{file_name}', ContentFile(file.read()))
+        # Generate document hash
+        hasher = hashlib.sha256()
+        for chunk in file.chunks():
+            hasher.update(chunk)
+        document_hash = hasher.hexdigest()
 
-            # Create PropertyDocument and update verification status if property was rejected
-            cursor.execute("""
-                INSERT INTO core_propertydocument 
-                (user_property_id, attachment, uploaded_at) 
-                VALUES (%s, %s, %s)
-                """, [
-                    user_property_id,
-                    saved_file_path,
-                    timezone.now()
-                ])
+        # Save file
+        path = f'property_documents/{property_id}/{file.name}'
+        saved_path = default_storage.save(path, ContentFile(file.read()))
 
-            # If property was previously rejected, reset status to pending
-            if current_status == 'rejected':
-                cursor.execute("""
-                    UPDATE core_userproperty 
-                    SET verification_status = 'pending'
-                    WHERE id = %s
-                    """, [user_property_id])
-                return JsonResponse({
-                    'message': 'New document uploaded successfully. Your property has been resubmitted for verification.',
-                    'status': 'pending_review'
-                }, status=201)
+        # Update user property with document info
+        user_property.document_path = saved_path
+        user_property.document_hash = document_hash
+        user_property.document_uploaded_at = timezone.now()
+        user_property.save()
 
-        return JsonResponse({
+        return Response({
             'message': 'Document uploaded successfully. The document will be reviewed during property verification.',
             'status': 'pending_review'
-        }, status=201)
+        }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Getting all unverified properties by land commission representative 
 @csrf_exempt
@@ -652,15 +605,9 @@ def get_all_properties(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-@csrf_exempt
-@require_http_methods(["GET"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_property_detail(request, property_id):
-    """Get detailed information about a specific property"""
-    # Check for authentication
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return JsonResponse({'error': 'Authentication required'}, status=401)
-    
     try:
         property_data = {}
         
@@ -684,7 +631,7 @@ def get_property_detail(request, property_id):
             
             result = cursor.fetchone()
             if not result:
-                return JsonResponse({'error': 'Property not found or not available'}, status=404)
+                return Response({'error': 'Property not found or not available'}, status=status.HTTP_404_NOT_FOUND)
             
             columns = ['id', 'title', 'property_type', 'description', 'location', 'status', 
                       'owner_firstname', 'owner_lastname', 'owner_phone', 'user_property_id']
@@ -722,41 +669,32 @@ def get_property_detail(request, property_id):
                 # Add listing data to property data
                 property_data.update(listing_data)
             
-        return JsonResponse(property_data)
+        return Response(property_data)
             
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def request_document_access(request):
-    """Endpoint for property seekers to request access to a property's title deed"""
     try:
         data = json.loads(request.body)
         property_id = data.get('property_id')
-        requester_id = data.get('requester_id')
         reason = data.get('reason')
 
-        if not all([property_id, requester_id, reason]):
-            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        if not all([property_id, reason]):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get requester from authenticated user
+        requester = request.user
 
         # Verify property exists and is available
         with connections['core'].cursor() as cursor:
             # First verify the requester is a property seeker
-            cursor.execute("""
-                SELECT role 
-                FROM core_user 
-                WHERE id = %s AND is_verified = true
-            """, [requester_id])
-            
-            result = cursor.fetchone()
-            if not result:
-                return JsonResponse({'error': 'Requester not found or not verified'}, status=404)
-            
-            if result[0] != 'property_seeker':
-                return JsonResponse({
+            if requester.role != 'property_seeker':
+                return Response({
                     'error': 'Only property seekers can request document access'
-                }, status=403)
+                }, status=status.HTTP_403_FORBIDDEN)
 
             # Then check property and get user_property_id
             cursor.execute("""
@@ -768,27 +706,27 @@ def request_document_access(request):
             
             result = cursor.fetchone()
             if not result:
-                return JsonResponse({'error': 'Property not found or not available'}, status=404)
+                return Response({'error': 'Property not found or not available'}, status=status.HTTP_404_NOT_FOUND)
             
             user_property_id, owner_id = result
 
             # Check if requester is not the owner
-            if int(requester_id) == owner_id:
-                return JsonResponse({
+            if requester.id == owner_id:
+                return Response({
                     'error': 'Property owners cannot request access to their own documents'
-                }, status=400)
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if there's already a pending or approved request
             cursor.execute("""
                 SELECT status 
                 FROM core_documentaccessrequest 
                 WHERE user_property_id = %s AND requester_id = %s AND status IN ('pending', 'approved')
-            """, [user_property_id, requester_id])
+            """, [user_property_id, requester.id])
             
             if cursor.fetchone():
-                return JsonResponse({
+                return Response({
                     'error': 'You already have a pending or approved request for this document'
-                }, status=400)
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             # Create the request
             cursor.execute("""
@@ -798,7 +736,7 @@ def request_document_access(request):
                 RETURNING id
             """, [
                 user_property_id,
-                requester_id,
+                requester.id,
                 timezone.now(),
                 'pending',
                 reason
@@ -806,35 +744,31 @@ def request_document_access(request):
             
             request_id = cursor.fetchone()[0]
 
-        response = JsonResponse({
+        response_data = {
             'message': 'Document access request submitted successfully. Awaiting owner approval.',
             'status': 'pending',
             'request_id': request_id
-        }, status=201)
+        }
         
-        # Also add request_id in header
-        response['X-Resource-Id'] = str(request_id)
-        return response
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def respond_to_document_request(request):
-    """Endpoint for property owners to approve or deny document access requests"""
     try:
         data = json.loads(request.body)
         request_id = data.get('request_id')
-        owner_id = data.get('owner_id')
         decision = data.get('decision')
         response_note = data.get('response_note', '')
 
-        if not all([request_id, owner_id, decision]):
-            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        if not all([request_id, decision]):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
 
         if decision not in ['approved', 'denied']:
-            return JsonResponse({'error': 'Invalid decision. Must be either "approved" or "denied"'}, status=400)
+            return Response({'error': 'Invalid decision. Must be either "approved" or "denied"'}, status=status.HTTP_400_BAD_REQUEST)
 
         with connections['core'].cursor() as cursor:
             # Verify the request exists and owner has rights
@@ -848,17 +782,17 @@ def respond_to_document_request(request):
             
             result = cursor.fetchone()
             if not result:
-                return JsonResponse({'error': 'Request not found'}, status=404)
+                return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
             
             current_status, request_owner_id, requester_email = result
 
             # Verify ownership
-            if int(owner_id) != request_owner_id:
-                return JsonResponse({'error': 'You do not have permission to respond to this request'}, status=403)
+            if request.user.id != request_owner_id:
+                return Response({'error': 'You do not have permission to respond to this request'}, status=status.HTTP_403_FORBIDDEN)
 
             # Check if request is still pending
             if current_status != 'pending':
-                return JsonResponse({'error': 'This request has already been processed'}, status=400)
+                return Response({'error': 'This request has already been processed'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Update request status
             cursor.execute("""
@@ -867,33 +801,20 @@ def respond_to_document_request(request):
                 WHERE id = %s
             """, [decision, timezone.now(), response_note, request_id])
 
-        return JsonResponse({
+        return Response({
             'message': f'Document access request {decision}',
             'requester_email': requester_email
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@csrf_exempt
-@require_http_methods(["GET"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_document_requests(request):
-    """Get document access requests based on user role"""
     try:
-        # Check for authentication
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({'error': 'Authentication required'}, status=401)
-            
-        user_id = request.GET.get('user_id')
-        role = request.GET.get('role')
+        role = request.user.role
 
-        if not user_id or not role:
-            return JsonResponse({'error': 'Missing required parameters'}, status=400)
-
-        # TODO: Add token validation to get the authenticated user's ID
-        # For now, we'll assume the token is valid and the user_id matches
-        
         with connections['core'].cursor() as cursor:
             if role == 'property_owner':
                 # Get requests for owner's properties
@@ -913,7 +834,7 @@ def get_document_requests(request):
                     JOIN core_user u ON dar.requester_id = u.id
                     WHERE up.owner_id = %s
                     ORDER BY dar.request_date DESC
-                """, [user_id])
+                """, [request.user.id])
             elif role == 'property_seeker':
                 # Get requests made by the property seeker
                 cursor.execute("""
@@ -931,9 +852,9 @@ def get_document_requests(request):
                     JOIN core_user u ON up.owner_id = u.id
                     WHERE dar.requester_id = %s
                     ORDER BY dar.request_date DESC
-                """, [user_id])
+                """, [request.user.id])
             else:
-                return JsonResponse({'error': 'Invalid role'}, status=400)
+                return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
 
             columns = ['property_title', 'contact_name', 'contact_email' if role == 'property_owner' else None,
                       'request_date', 'status', 'reason', 'response_date', 'response_note']
@@ -948,7 +869,7 @@ def get_document_requests(request):
                     request_data['response_date'] = request_data['response_date'].isoformat()
                 requests.append(request_data)
 
-        return JsonResponse(requests, safe=False)
+        return Response(requests)
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
