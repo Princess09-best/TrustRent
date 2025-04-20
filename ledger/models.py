@@ -125,15 +125,15 @@ class PropertyLedger:
         for block in blocks:
             # Prepare block data for hash calculation
             block_data = {
-                'property_id': block.property_id,  # Already stored in correct format
+                'property_id': str(block.property_id),  # Ensure property_id is a string
                 'owner_id': block.owner_id,
                 'document_hash': block.document_hash,
                 'block_number': block.block_number,
                 'timestamp': block.timestamp
             }
             
-            # Calculate hash
-            calculated_hash = cls._calculate_hash(block_data)
+            # Calculate hash using the same method as registration
+            calculated_hash = calculate_block_hash(block_data)
             
             if calculated_hash != block.current_hash:
                 chain_valid = False
@@ -258,113 +258,93 @@ class PropertyLedger:
 
 class SmartContract(models.Model):
     """
-    Represents a smart contract for property ownership verification and transfer
+    Smart Contract model for property ownership verification.
+    Implements a state machine pattern for contract execution.
     """
-    CONTRACT_STATUS = (
-        ('pending', 'Pending'),
-        ('active', 'Active'),
-        ('executed', 'Executed'),
-        ('cancelled', 'Cancelled'),
-        ('failed', 'Failed')
-    )
+    CONTRACT_STATUS = [
+        ('created', 'Created'),
+        ('pending_verification', 'Pending Verification'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+        ('expired', 'Expired')
+    ]
 
-    CONTRACT_TYPE = (
-        ('ownership_verification', 'Ownership Verification'),
-        ('ownership_transfer', 'Ownership Transfer')
-    )
-
-    contract_id = models.CharField(max_length=100, unique=True)
+    contract_id = models.CharField(max_length=64, unique=True)
     property_id = models.CharField(max_length=100)
     owner_id = models.IntegerField()
-    contract_type = models.CharField(max_length=50, choices=CONTRACT_TYPE)
-    status = models.CharField(max_length=20, choices=CONTRACT_STATUS, default='pending')
-    conditions = models.JSONField(default=dict)  # Stores contract conditions
+    requester_id = models.IntegerField()
+    status = models.CharField(max_length=20, choices=CONTRACT_STATUS, default='created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     executed_at = models.DateTimeField(null=True)
+    expiry_date = models.DateTimeField()
+    verification_data = models.JSONField(default=dict)  # Stores verification rules and results
 
     class Meta:
         db_table = 'ledger_smart_contract'
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"Contract {self.contract_id} - {self.contract_type}"
+        return f"Contract {self.contract_id} - Property {self.property_id}"
 
-    def execute_contract(self):
-        """Execute the smart contract based on its type and conditions"""
-        if self.status != 'active':
-            return False, "Contract is not active"
+    def can_transition_to(self, new_status):
+        """Validates if the contract can transition to the new status"""
+        valid_transitions = {
+            'created': ['pending_verification'],
+            'pending_verification': ['verified', 'rejected'],
+            'verified': ['expired'],
+            'rejected': ['expired'],
+            'expired': []
+        }
+        return new_status in valid_transitions.get(self.status, [])
 
-        if self.contract_type == 'ownership_verification':
-            return self._execute_ownership_verification()
-        elif self.contract_type == 'ownership_transfer':
-            return self._execute_ownership_transfer()
-        
-        return False, "Unknown contract type"
+    def transition_to(self, new_status):
+        """Transitions the contract to a new status if valid"""
+        if self.can_transition_to(new_status):
+            self.status = new_status
+            if new_status in ['verified', 'rejected']:
+                self.executed_at = timezone.now()
+            self.save()
+            return True
+        return False
 
-    def _execute_ownership_verification(self):
-        """Execute ownership verification contract"""
+    def verify_ownership(self):
+        """
+        Executes the ownership verification logic.
+        Returns (success, result_dict)
+        """
         try:
             # Get the latest block for this property
             latest_block = Block.objects.filter(
-                property_id=str(PropertyLedger._extract_property_number(self.property_id))
+                property_id=str(self.property_id)
             ).order_by('-block_number').first()
 
             if not latest_block:
-                self.status = 'failed'
-                self.save()
                 return False, "Property not found in blockchain"
 
             # Verify ownership
             is_owner = latest_block.owner_id == self.owner_id
-
+            
+            # Record verification result
+            self.verification_data.update({
+                'verified_at': timezone.now().isoformat(),
+                'is_owner': is_owner,
+                'block_number': latest_block.block_number,
+                'block_hash': latest_block.current_hash
+            })
+            
             # Update contract status
-            self.status = 'executed'
-            self.executed_at = timezone.now()
+            new_status = 'verified' if is_owner else 'rejected'
+            self.transition_to(new_status)
             self.save()
 
             return True, {
                 'is_owner': is_owner,
                 'verification_date': self.executed_at,
-                'contract_id': self.contract_id
+                'contract_id': self.contract_id,
+                'status': self.status
             }
 
         except Exception as e:
-            self.status = 'failed'
-            self.save()
             return False, str(e)
 
-    def _execute_ownership_transfer(self):
-        """Execute ownership transfer contract"""
-        try:
-            if 'new_owner_id' not in self.conditions:
-                return False, "New owner ID not specified in contract conditions"
-
-            new_owner_id = self.conditions['new_owner_id']
-            document_hash = self.conditions.get('document_hash')
-
-            # Register the transfer on the blockchain
-            success, message, block = PropertyLedger.register_property(
-                property_id=self.property_id,
-                owner_id=new_owner_id,
-                document_hash=document_hash,
-                verified_by=self.conditions.get('verified_by')
-            )
-
-            if success:
-                self.status = 'executed'
-                self.executed_at = timezone.now()
-                self.save()
-                return True, {
-                    'message': 'Ownership transferred successfully',
-                    'block_number': block.block_number,
-                    'contract_id': self.contract_id
-                }
-            
-            self.status = 'failed'
-            self.save()
-            return False, message
-
-        except Exception as e:
-            self.status = 'failed'
-            self.save()
-            return False, str(e)

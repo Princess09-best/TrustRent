@@ -9,11 +9,17 @@ def normalize_block_data(data: Dict[str, Union[str, int, datetime, None]]) -> Di
     """
     normalized = {}
     
-    # Convert property_id to string and ensure it's not just a number
-    if isinstance(data.get('property_id'), int):
-        normalized['property_id'] = f"PROP_{data['property_id']}"
+    # Convert property_id to string, ensuring it's just the numeric part
+    property_id = data.get('property_id')
+    if isinstance(property_id, int):
+        normalized['property_id'] = str(property_id)
     else:
-        normalized['property_id'] = str(data.get('property_id', ''))
+        # Remove any PROP_ prefix if present and ensure it's a string
+        prop_str = str(property_id or '')
+        if prop_str.startswith('PROP_'):
+            normalized['property_id'] = prop_str[5:]  # Remove PROP_ prefix
+        else:
+            normalized['property_id'] = prop_str
     
     # Convert owner_id to string
     normalized['owner_id'] = str(data.get('owner_id', ''))
