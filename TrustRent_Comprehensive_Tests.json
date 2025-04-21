@@ -2483,7 +2483,675 @@
         },
         {
           "name": "2.6 Property Documents",
-          "item": []
+          "item": [
+            {
+              "name": "Upload Property Document",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and document info\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Document uploaded successfully');",
+                      "    pm.expect(jsonData).to.have.property('document_id');",
+                      "    pm.expect(jsonData).to.have.property('file_name');",
+                      "    pm.expect(jsonData).to.have.property('upload_date');",
+                      "});",
+                      "",
+                      "// Save document ID for future tests",
+                      "const documentId = pm.response.json().document_id;",
+                      "if (documentId) {",
+                      "    pm.environment.set('document_id', documentId);",
+                      "    console.log('Document ID set:', documentId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "user_property_id",
+                      "value": "{{user_property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "document",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    },
+                    {
+                      "key": "document_type",
+                      "value": "title_deed",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "upload", ""]
+                },
+                "description": "Upload a property document as the property owner"
+              }
+            },
+            {
+              "name": "Upload Document as Non-Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('You do not have permission to upload documents for this property');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{seeker_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "user_property_id",
+                      "value": "{{user_property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "document",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    },
+                    {
+                      "key": "document_type",
+                      "value": "title_deed",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "upload", ""]
+                },
+                "description": "Attempt to upload a document for a property not owned by the user"
+              }
+            },
+            {
+              "name": "Upload Document with Invalid Property ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about property not found\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Property not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "user_property_id",
+                      "value": "999999",
+                      "type": "text"
+                    },
+                    {
+                      "key": "document",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    },
+                    {
+                      "key": "document_type",
+                      "value": "title_deed",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "upload", ""]
+                },
+                "description": "Attempt to upload a document with an invalid property ID"
+              }
+            },
+            {
+              "name": "Upload Document with Invalid Type",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about invalid document type\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid document type');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "user_property_id",
+                      "value": "{{user_property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "document",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    },
+                    {
+                      "key": "document_type",
+                      "value": "invalid_type",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "upload", ""]
+                },
+                "description": "Attempt to upload a document with an invalid document type"
+              }
+            },
+            {
+              "name": "Upload Document with Invalid File Format",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about invalid file format\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid file format');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "user_property_id",
+                      "value": "{{user_property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "document",
+                      "type": "file",
+                      "src": "test_files/invalid_document.txt"
+                    },
+                    {
+                      "key": "document_type",
+                      "value": "title_deed",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "upload", ""]
+                },
+                "description": "Attempt to upload a document with an invalid file format (not PDF)"
+              }
+            },
+            {
+              "name": "List Property Documents",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array of documents with required fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.property('id');",
+                      "        pm.expect(jsonData[0]).to.have.property('document_type');",
+                      "        pm.expect(jsonData[0]).to.have.property('file_name');",
+                      "        pm.expect(jsonData[0]).to.have.property('upload_date');",
+                      "        pm.expect(jsonData[0]).to.have.property('hash');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/{{user_property_id}}/documents/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "{{user_property_id}}", "documents", ""]
+                },
+                "description": "Get list of documents for a property"
+              }
+            },
+            {
+              "name": "View Document Details",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has document details\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('id');",
+                      "    pm.expect(jsonData).to.have.property('document_type');",
+                      "    pm.expect(jsonData).to.have.property('file_name');",
+                      "    pm.expect(jsonData).to.have.property('upload_date');",
+                      "    pm.expect(jsonData).to.have.property('hash');",
+                      "    pm.expect(jsonData).to.have.property('blockchain_record');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "{{document_id}}", ""]
+                },
+                "description": "Get details of a specific document"
+              }
+            },
+            {
+              "name": "Request Document Access as Seeker",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and request ID\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Document access request submitted successfully');",
+                      "    pm.expect(jsonData).to.have.property('request_id');",
+                      "    pm.expect(jsonData.status).to.equal('pending');",
+                      "});",
+                      "",
+                      "// Save request ID for future tests",
+                      "const requestId = pm.response.json().request_id;",
+                      "if (requestId) {",
+                      "    pm.environment.set('access_request_id', requestId);",
+                      "    console.log('Access Request ID set:', requestId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{seeker_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"reason\": \"Interested in purchasing the property\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/request-access/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "request-access", ""]
+                },
+                "description": "Request access to property documents as a property seeker"
+              }
+            },
+            {
+              "name": "View Document Access Requests as Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array of access requests with required fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.property('id');",
+                      "        pm.expect(jsonData[0]).to.have.property('requester');",
+                      "        pm.expect(jsonData[0]).to.have.property('request_date');",
+                      "        pm.expect(jsonData[0]).to.have.property('status');",
+                      "        pm.expect(jsonData[0]).to.have.property('reason');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/{{user_property_id}}/document-requests/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "{{user_property_id}}", "document-requests", ""]
+                },
+                "description": "View document access requests for a property as the owner"
+              }
+            },
+            {
+              "name": "Approve Document Access Request",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and updated status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Document access request approved successfully');",
+                      "    pm.expect(jsonData.status).to.equal('approved');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"status\": \"approved\",\n    \"response_note\": \"Access granted for 7 days\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/respond-to-request/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "respond-to-request", ""]
+                },
+                "description": "Approve a document access request as the property owner"
+              }
+            },
+            {
+              "name": "Access Document as Seeker (After Approval)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has document details\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('id');",
+                      "    pm.expect(jsonData).to.have.property('document_type');",
+                      "    pm.expect(jsonData).to.have.property('file_name');",
+                      "    pm.expect(jsonData).to.have.property('upload_date');",
+                      "    pm.expect(jsonData).to.have.property('download_url');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{seeker_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "{{document_id}}", ""]
+                },
+                "description": "Access document details after request approval"
+              }
+            },
+            {
+              "name": "Delete Property Document",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Document deleted successfully');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "{{document_id}}", ""]
+                },
+                "description": "Delete a property document as the owner"
+              }
+            },
+            {
+              "name": "Delete Document as Non-Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('You do not have permission to delete this document');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{seeker_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "document", "{{document_id}}", ""]
+                },
+                "description": "Attempt to delete a property document as a non-owner"
+              }
+            },
+            {
+              "name": "Verify Document on Blockchain",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has verification status and blockchain data\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('is_verified');",
+                      "    pm.expect(jsonData).to.have.property('document_hash');",
+                      "    pm.expect(jsonData).to.have.property('blockchain_record');",
+                      "    pm.expect(jsonData.blockchain_record).to.have.property('transaction_hash');",
+                      "    pm.expect(jsonData.blockchain_record).to.have.property('timestamp');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/trustchain/verify-document/{{document_id}}/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "trustchain", "verify-document", "{{document_id}}", ""]
+                },
+                "description": "Verify a property document on the blockchain"
+              }
+            }
+          ]
         }
       ]
     },
