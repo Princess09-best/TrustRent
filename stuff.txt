@@ -1,0 +1,12 @@
+"    pm.expect(jsonData.error).to.include('password');",
+
+
+//from verify without auth test
+
+"    pm.expect(jsonData.error).to.include('permission');",
+
+//from verify with wrong auth test
+
+ "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+
+ i think ive not implemented rbac permissons for the property listings. so only a property owner should be able to create a listing, ,deactivate a listing or reactvate a listing. we need to check that. property owners can also only get listings they have created on the site, and details of property listings they have created . property seekers can acess all the listings to their liking an filter through them based on certain metrics. 

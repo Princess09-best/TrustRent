@@ -173,35 +173,38 @@ def login_user(request):
         return JsonResponse({'error': 'Login failed'}, status=500)
 
 #function for admin to get all unverified users
-@csrf_exempt
-@require_http_methods(["GET", "OPTIONS"])
+@api_view(['GET'])
+@permission_classes([HasUserPermission(UserPermission.VIEW_UNVERIFIED_USERS.value)])
 def get_unverified_users(request):
-    if request.method == "OPTIONS":
-        response = JsonResponse({})
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type"
-        return response
-
-    if request.method == 'GET':
-        users = User.objects.filter(is_verified=False).values('id', 'firstname', 'lastname', 'email', 'role', 'id_type', 'id_value')
-        response = JsonResponse(list(users), safe=False)
-        response["Access-Control-Allow-Origin"] = "*"
-        return response
-
-    return JsonResponse({'error': 'Method not allowed'}, status=405)
+    """
+    Get list of all unverified users.
+    Only accessible by system admins.
+    """
+    users = User.objects.filter(is_verified=False).values(
+        'id', 'firstname', 'lastname', 'email', 'role', 'id_type', 'id_value'
+    )
+    return Response(list(users), status=status.HTTP_200_OK)
 
 #function for admin to verify users using id regex validation
 @csrf_exempt
+@api_view(['PATCH'])
+@permission_classes([HasUserPermission(UserPermission.VERIFY_USERS.value)])
 def verify_user(request):
-    if request.method != 'PATCH':
-        return JsonResponse({'error': 'PATCH only'}, status=405)
-
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
 
+        # Validate user_id format
+        if not isinstance(user_id, (int, str)) or (isinstance(user_id, str) and not user_id.isdigit()):
+            return JsonResponse({'error': 'Invalid user_id format. Must be a number'}, status=400)
+
+        # Convert to integer for database query
+        user_id = int(user_id)
         user = User.objects.get(id=user_id)
+
+        # Check if user is already verified
+        if user.is_verified:
+            return JsonResponse({'error': 'User is already verified'}, status=400)
 
         # Regex patterns
         patterns = {
@@ -222,6 +225,8 @@ def verify_user(request):
 
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=404)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid user_id format. Must be a number'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
@@ -280,12 +285,16 @@ def create_property(request):
             is_active=True
         )
 
-        return Response({
+        # Create response with clean body and IDs in headers
+        response = Response({
             'message': 'Property created successfully. Awaiting verification.',
-            'property_id': property.id,
-            'user_property_id': user_property.id,
             'status': 'pending_verification'
         }, status=status.HTTP_201_CREATED)
+        
+        # Add IDs to response headers with prefixes
+        response['X-Resource-Id'] = f"PROP_{property.id}"
+        response['X-UserProperty-Id'] = f"UP_{user_property.id}"
+        return response
 
     except Exception as e:
         print(f"Error in create_property: {str(e)}")
@@ -324,6 +333,13 @@ def upload_document(request):
                 owner=request.user,
                 is_active=True
             )
+            
+            # Check if property is already verified - cannot upload documents to verified properties
+            if user_property.is_verified:
+                return Response({
+                    'error': 'Cannot upload documents to a property that has already been verified.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
         except UserProperty.DoesNotExist:
             return Response({
                 'error': 'Property not found or you do not have permission'
@@ -399,8 +415,6 @@ def verify_property(request):
         user_property_id = request.data.get('user_property_id')
         verification_status = request.data.get('verification_status')
 
-        print(f"DEBUG: Verify property request - ID: {user_property_id}, Status: {verification_status}")
-
         if not user_property_id or not verification_status:
             return Response(
                 {'error': 'user_property_id and verification_status are required'},
@@ -422,9 +436,29 @@ def verify_property(request):
                 status=status.HTTP_404_NOT_FOUND
             )
             
-        # Store current status for verification history
+        # Store previous status for history tracking
         previous_status = user_property.verification_status
-        print(f"DEBUG: Previous status: {previous_status}, New status: {verification_status}")
+
+        # If approving, check that required documents are uploaded
+        if verification_status == 'approved':
+            # Check if the property has at least one document uploaded
+            if not user_property.document_path or not user_property.document_hash:
+                return Response(
+                    {'error': 'Property cannot be approved without at least one document uploaded.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            # Check if the property has at least one image (optional check)
+            images_count = PropertyImage.objects.filter(
+                property_id=user_property.property.id,
+                is_active=True
+            ).count()
+            
+            if images_count == 0:
+                return Response(
+                    {'error': 'Property cannot be approved without at least one image uploaded.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # Update verification status and timestamps
         verification_time = timezone.now()
@@ -459,98 +493,101 @@ def verify_property(request):
                 user_property.is_verified = True
                 user_property.save()
                 
+                # Create verification history entry
+                VerificationHistory.objects.create(
+                    user_property=user_property,
+                    previous_status=previous_status,
+                    new_status=verification_status,
+                    changed_at=verification_time
+                )
+                
                 return Response({
                     'message': 'Property ownership verification approved successfully.',
-                    'verification_status': verification_status,
-                    'transaction_hash': block.current_hash,
-                    'verified_at': verification_time
+                    'verification_status': verification_status
                 }, status=status.HTTP_200_OK)
                 
             except Exception as e:
-                print(f"DEBUG: Exception in blockchain registration: {str(e)}")
                 return Response({
                     'error': f'Error registering property on blockchain: {str(e)}'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        # If rejected, just save the status
+        # If rejected, save the status and create history entry
         user_property.save()
         
-        # Create verification history entry - always create it regardless of status change
-        # This ensures we have a record of every verification attempt
-        try:
-            # Create history entry
-            history_data = {
-                'user_property_id': user_property.id,  # Use ID directly instead of object
-                'previous_status': previous_status,
-                'new_status': verification_status,
-                'changed_at': verification_time
-            }
-            
-            # Force insert directly into the database to bypass any model-level issues
-            with connection.cursor() as cursor:
-                fields = ', '.join(history_data.keys())
-                placeholders = ', '.join(['%s'] * len(history_data))
-                values = [history_data[key] for key in history_data.keys()]
-                
-                query = f"INSERT INTO core_verificationhistory ({fields}) VALUES ({placeholders}) RETURNING id"
-                print(f"DEBUG: SQL Query: {query}")
-                print(f"DEBUG: SQL Values: {values}")
-                
-                # Check if table exists and its structure
-                cursor.execute("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'core_verificationhistory')")
-                table_exists = cursor.fetchone()[0]
-                print(f"DEBUG: Table exists: {table_exists}")
-                
-                if table_exists:
-                    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'core_verificationhistory'")
-                    columns = [col[0] for col in cursor.fetchall()]
-                    print(f"DEBUG: Table columns: {columns}")
-                
-                cursor.execute(query, values)
-                history_id = cursor.fetchone()[0]
-                connection.commit()  # Make sure we commit the transaction
-                print(f"DEBUG: Successfully created verification history with ID: {history_id}")
-        except Exception as e:
-            print(f"DEBUG: Failed to create verification history: {str(e)}")
-            # Continue execution - don't fail the whole request if history creation fails
-            
+        # Create verification history entry for rejection
+        VerificationHistory.objects.create(
+            user_property=user_property,
+            previous_status=previous_status,
+            new_status=verification_status,
+            changed_at=verification_time
+        )
+        
         return Response({
             'message': 'Property verification status updated.',
-            'verification_status': verification_status,
-            'verified_at': verification_time
+            'verification_status': verification_status
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
-        print(f"DEBUG: Exception in verify_property: {str(e)}")
         return Response({
             'error': f'Error processing verification: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
 
 
     
 @api_view(['POST'])
 @permission_classes([HasUserPermission(UserPermission.REJECT_PROPERTY.value)])
 def reject_property(request):
+    """
+    Reject a property with a reason
+    """
     try:
-        data = json.loads(request.body)
-        user_property_id = data.get('user_property_id')
+        # Get required fields from request
+        user_property_id = request.data.get('user_property_id')
+        rejection_reason = request.data.get('rejection_reason')
 
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                UPDATE core_userproperty 
-                SET is_verified = false, verification_status = 'rejected', is_active = false
-                WHERE id = %s
-                RETURNING id
-                """, [user_property_id])
+        if not user_property_id or not rejection_reason:
+            return Response(
+                {'error': 'user_property_id and rejection_reason are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the property
+        try:
+            user_property = UserProperty.objects.get(id=user_property_id)
+        except UserProperty.DoesNotExist:
+            return Response(
+                {'error': 'Property not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
             
-            if not cursor.fetchone():
-                return JsonResponse({'error': 'UserProperty not found.'}, status=404)
+        # Store previous status for history tracking
+        previous_status = user_property.verification_status
 
-        return JsonResponse({'message': 'Property rejected, documents not correct'})
+        # Update verification status and rejection details
+        rejection_time = timezone.now()
+        user_property.verification_status = 'rejected'
+        user_property.rejection_reason = rejection_reason
+        user_property.last_verified_at = rejection_time
+        user_property.save()
+        
+        # Create verification history entry
+        VerificationHistory.objects.create(
+            user_property=user_property,
+            previous_status=previous_status,
+            new_status='rejected',
+            changed_at=rejection_time
+        )
+
+        return Response({
+            'message': 'Property rejected successfully.',
+            'rejection_reason': rejection_reason
+        }, status=status.HTTP_200_OK)
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return Response({
+            'error': f'Error rejecting property: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([HasUserPermission(UserPermission.UPLOAD_PROPERTY_IMAGE.value)])
@@ -582,6 +619,13 @@ def upload_property_image(request):
                 owner=request.user,
                 is_active=True
             )
+            
+            # Check if property is already verified - cannot upload images to verified properties
+            if user_property.is_verified:
+                return JsonResponse({
+                    'error': 'Cannot upload images to a property that has already been verified.'
+                }, status=400)
+                
         except UserProperty.DoesNotExist:
             return JsonResponse({'error': 'Property not found or you do not have permission'}, status=404)
 

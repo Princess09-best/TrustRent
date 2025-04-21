@@ -1,0 +1,2594 @@
+{
+  "info": {
+    "_postman_id": "trustrent-comprehensive-tests",
+    "name": "TrustRent Comprehensive Tests",
+    "description": "Complete end-to-end test suite for the TrustRent platform covering all functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. User Management",
+      "description": "Tests for user registration, authentication, and account management",
+      "item": [
+        {
+          "name": "1.1 User Registration",
+          "item": [
+            {
+              "name": "Register Property Owner",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const email = `owner_${timestamp}@example.com`;",
+                      "pm.environment.set('owner_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('successful');",
+                      "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                      "});",
+                      "",
+                      "const userId = pm.response.headers.get('X-User-Id');",
+                      "console.log('Property Owner ID:', userId);",
+                      "if (userId) {",
+                      "    pm.environment.set('owner_id', userId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Owner\",\n    \"email\": \"{{owner_email}}\",\n    \"phone_number\": \"+233555666777\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Register a new property owner user"
+              }
+            },
+            {
+              "name": "Register Property Seeker",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const email = `seeker_${timestamp}@example.com`;",
+                      "pm.environment.set('seeker_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('successful');",
+                      "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                      "});",
+                      "",
+                      "const userId = pm.response.headers.get('X-User-Id');",
+                      "console.log('Property Seeker ID:', userId);",
+                      "if (userId) {",
+                      "    pm.environment.set('seeker_id', userId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Seeker\",\n    \"email\": \"{{seeker_email}}\",\n    \"phone_number\": \"+233555666888\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_seeker\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-987654321-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Register a new property seeker user"
+              }
+            },
+            {
+              "name": "Register with Invalid Email",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid email');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"invalid-email\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with invalid email format"
+              }
+            },
+            {
+              "name": "Register with Invalid Phone Number",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('phone number');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test123@example.com\",\n    \"phone_number\": \"123456789\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with invalid phone number format"
+              }
+            },
+            {
+              "name": "Register with Invalid ID Value",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid Ghana Card format');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test123@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"StrongP@ssw0rd123\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"12345\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with invalid ID format"
+              }
+            },
+            {
+              "name": "Register with Weak Password",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test123@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"weak\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with weak password"
+              }
+            },
+            {
+              "name": "Register with Missing Required Fields",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('required');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"test123@example.com\",\n    \"password\": \"TestPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with missing required fields"
+              }
+            },
+            {
+              "name": "Register with Duplicate Email",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const email = `duplicate_1745244019390@example.com`;",
+                      "pm.environment.set('duplicate_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('already exists');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"{{duplicate_email}}\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration with duplicate email"
+              }
+            },
+            {
+              "name": "Register with Invalid Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid role');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test123@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"invalid_role\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with invalid role"
+              }
+            },
+            {
+              "name": "Register with Invalid ID Type",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid ID type');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test123@example.com\",\n    \"phone_number\": \"+233555123456\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Invalid ID\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration validation with invalid ID type"
+              }
+            },
+            {
+              "name": "Register with Different Phone Formats",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('phone number');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"User\",\n    \"email\": \"test123@example.com\",\n    \"phone_number\": \"+233 55 512 3456\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "register", ""]
+                },
+                "description": "Test registration with different phone number formats"
+              }
+            },
+            {
+              "name": "Create Land Commission Representative",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const email = `landrep_${timestamp}@landcomm.gov.gh`;",
+                      "pm.environment.set('landrep_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('land_commission_rep account created successfully');",
+                      "    pm.expect(jsonData.email).to.equal(pm.environment.get('landrep_email'));",
+                      "    pm.expect(jsonData.role).to.equal('land_commission_rep');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"LandRep\",\n    \"email\": \"{{landrep_email}}\",\n    \"phone_number\": \"+233555666999\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"land_commission_rep\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-987654321-1\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Create a new Land Commission representative (requires admin permissions)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 User Authentication",
+          "item": [
+            {
+              "name": "Login as Admin",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Login successful');",
+                      "});",
+                      "",
+                      "const authHeader = pm.response.headers.get('Authorization');",
+                      "console.log('Admin Auth Header:', authHeader);",
+                      "if (authHeader) {",
+                      "    const token = authHeader.replace('Bearer ', '');",
+                      "    pm.environment.set('admin_token', token);",
+                      "    console.log('Admin token set:', token);",
+                      "}",
+                      "",
+                      "const refreshToken = pm.response.headers.get('X-Refresh-Token');",
+                      "if (refreshToken) {",
+                      "    pm.environment.set('admin_refresh_token', refreshToken);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/login/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "login", ""]
+                },
+                "description": "Login as admin user to get authentication token"
+              }
+            },
+            {
+              "name": "Verify Property Owner User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('verified successfully');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{owner_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Admin verifies property owner's account"
+              }
+            },
+            {
+              "name": "Verify Property Seeker User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('verified successfully');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{seeker_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Admin verifies property seeker's account"
+              }
+            },
+            {
+              "name": "Login as Property Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Login successful');",
+                      "});",
+                      "",
+                      "const authHeader = pm.response.headers.get('Authorization');",
+                      "console.log('Property Owner Auth Header:', authHeader);",
+                      "if (authHeader) {",
+                      "    const token = authHeader.replace('Bearer ', '');",
+                      "    pm.environment.set('owner_token', token);",
+                      "    console.log('Property Owner token set:', token);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"{{owner_email}}\",\n    \"password\": \"TestPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/login/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "login", ""]
+                },
+                "description": "Login as property owner to get authentication token"
+              }
+            },
+            {
+              "name": "Login as Property Seeker",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Login successful');",
+                      "});",
+                      "",
+                      "const authHeader = pm.response.headers.get('Authorization');",
+                      "console.log('Property Seeker Auth Header:', authHeader);",
+                      "if (authHeader) {",
+                      "    const token = authHeader.replace('Bearer ', '');",
+                      "    pm.environment.set('seeker_token', token);",
+                      "    console.log('Property Seeker token set:', token);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"{{seeker_email}}\",\n    \"password\": \"TestPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/login/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "login", ""]
+                },
+                "description": "Login as property seeker to get authentication token"
+              }
+            },
+            {
+              "name": "Login with Invalid Credentials",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {",
+                      "    pm.response.to.have.status(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid credentials');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"{{owner_email}}\",\n    \"password\": \"WrongPassword123\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/login/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "login", ""]
+                },
+                "description": "Test login validation with incorrect password"
+              }
+            },
+            {
+              "name": "Login as Land Commission Representative",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Login successful');",
+                      "});",
+                      "",
+                      "const authHeader = pm.response.headers.get('Authorization');",
+                      "console.log('Land Commission Auth Header:', authHeader);",
+                      "if (authHeader) {",
+                      "    const token = authHeader.replace('Bearer ', '');",
+                      "    pm.environment.set('landrep_token', token);",
+                      "    console.log('Land Commission token set:', token);",
+                      "}",
+                      "",
+                      "// Verify token permissions in a subsequent request if needed",
+                      "// The role and verification status are not part of login response",
+                      "// but can be checked through a profile or permissions endpoint"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"{{landrep_email}}\",\n    \"password\": \"TestPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/login/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "login", ""]
+                },
+                "description": "Login as Land Commission representative to get authentication token"
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 User Verification",
+          "item": [
+            {
+              "name": "Get Unverified Users",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test(\"Users have required fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.property('id');",
+                      "        pm.expect(jsonData[0]).to.have.property('firstname');",
+                      "        pm.expect(jsonData[0]).to.have.property('lastname');",
+                      "        pm.expect(jsonData[0]).to.have.property('email');",
+                      "        pm.expect(jsonData[0]).to.have.property('role');",
+                      "        pm.expect(jsonData[0]).to.have.property('id_type');",
+                      "        pm.expect(jsonData[0]).to.have.property('id_value');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/user/unverified/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "unverified", ""]
+                },
+                "description": "Get list of unverified users (requires admin permissions)"
+              }
+            },
+            {
+              "name": "Verify Property Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('verified successfully');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{owner_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Verify a property owner's account"
+              }
+            },
+            {
+              "name": "Verify Property Seeker",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('verified successfully');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{seeker_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Verify a property seeker's account"
+              }
+            },
+            {
+              "name": "Verify User with Invalid ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('User not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"999999\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Test verification with non-existent user ID"
+              }
+            },
+            {
+              "name": "Get Unverified Users Without Auth",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/user/unverified/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "unverified", ""]
+                },
+                "description": "Test accessing unverified users list without authentication"
+              }
+            },
+            {
+              "name": "Get Unverified Users with Non-Admin Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                     
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/user/unverified/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "unverified", ""]
+                },
+                "description": "Test accessing unverified users list with non-admin token"
+              }
+            },
+            {
+              "name": "Verify User with Invalid ID Format",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid user_id format');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"invalid-id-format\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Test verification with invalid user ID format"
+              }
+            },
+            {
+              "name": "Verify Already Verified User",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Ensure we're using the owner_id that was previously verified",
+                      "const ownerId = pm.environment.get('owner_id');",
+                      "if (!ownerId) {",
+                      "    console.error('No owner_id found in environment');",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('User is already verified');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{owner_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Test verifying an already verified user"
+              }
+            },
+            {
+              "name": "Verify User with Insufficient Permissions",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_id\": \"{{seeker_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/user/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "user", "verify", ""]
+                },
+                "description": "Test verifying a user without admin permissions"
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Admin Account Management",
+          "item": [
+            {
+              "name": "Create System Admin Account",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const email = `admin_${timestamp}@trustrent.com`;",
+                      "pm.environment.set('new_admin_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and correct role\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('sys_admin account created successfully');",
+                      "    pm.expect(jsonData.email).to.equal(pm.environment.get('new_admin_email'));",
+                      "    pm.expect(jsonData.role).to.equal('sys_admin');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"New\",\n    \"lastname\": \"Admin\",\n    \"email\": \"{{new_admin_email}}\",\n    \"phone_number\": \"+233555777888\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-2\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Create a new system administrator account (requires existing admin permissions)"
+              }
+            },
+            {
+              "name": "Create Admin Account Without Permission",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Admin\",\n    \"email\": \"test.admin@trustrent.com\",\n    \"phone_number\": \"+233555777999\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-3\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create admin account without proper permissions"
+              }
+            },
+            {
+              "name": "Create Admin with Invalid Role",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid role');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Admin\",\n    \"email\": \"test.admin@trustrent.com\",\n    \"phone_number\": \"+233555777999\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"invalid_role\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-3\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create admin account with invalid role"
+              }
+            },
+            {
+              "name": "Create Admin with Duplicate Email",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Email already registered');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Admin\",\n    \"email\": \"{{new_admin_email}}\",\n    \"phone_number\": \"+233555777999\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-3\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create admin account with an email that already exists"
+              }
+            },
+            {
+              "name": "Create Admin with Invalid Phone Number",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid phone number format');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Admin\",\n    \"email\": \"test.admin2@trustrent.com\",\n    \"phone_number\": \"0555777999\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-3\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create admin account with invalid phone number format"
+              }
+            },
+            {
+              "name": "Create Admin with Invalid ID Format",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid Ghana Card format');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Admin\",\n    \"email\": \"test.admin2@trustrent.com\",\n    \"phone_number\": \"+233555777999\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"123456789\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create admin account with invalid ID format"
+              }
+            },
+            {
+              "name": "Land Rep Create System Admin",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Login as Land Commission Rep first",
+                      "const timestamp = new Date().getTime();",
+                      "const email = `newadmin_${timestamp}@trustrent.com`;",
+                      "pm.environment.set('new_admin_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"Admin\",\n    \"email\": \"{{new_admin_email}}\",\n    \"phone_number\": \"+233555777999\",\n    \"password\": \"AdminPass123!\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-3\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create a system admin account using land commission representative permissions"
+              }
+            },
+            {
+              "name": "Land Rep Create Another Land Rep",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const email = `newlandrep_${timestamp}@landcomm.gov.gh`;",
+                      "pm.environment.set('new_landrep_email', email);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"firstname\": \"Test\",\n    \"lastname\": \"LandRep\",\n    \"email\": \"{{new_landrep_email}}\",\n    \"phone_number\": \"+233555777999\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"land_commission_rep\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-4\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/create-account/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "create-account", ""]
+                },
+                "description": "Attempt to create another land commission representative account using land commission representative permissions"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Property Management",
+      "description": "Tests for property creation, verification, and management",
+      "item": [
+        {
+          "name": "2.1 Property Creation",
+          "item": [
+            {
+              "name": "Create Property as Property Owner",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "pm.environment.set('property_title', `Test Property ${timestamp}`);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('message');",
+                      "    pm.expect(jsonData).to.have.property('status');",
+                      "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                      "});",
+                      "",
+                      "// Extract property_id from header and save it",
+                      "const propertyId = pm.response.headers.get('X-Resource-Id');",
+                      "if (propertyId) {",
+                      "    const cleanId = propertyId.replace('PROP_', '');",
+                      "    pm.environment.set('property_id', cleanId);",
+                      "    console.log('Set property_id from header:', cleanId);",
+                      "} else {",
+                      "    console.error('Property ID not found in response headers');",
+                      "}",
+                      "",
+                      "// Extract and save user_property_id",
+                      "const userPropertyId = pm.response.headers.get('X-UserProperty-Id');", 
+                      "if (userPropertyId) {",
+                      "    const cleanId = userPropertyId.replace('UP_', '');",
+                      "    pm.environment.set('user_property_id', cleanId);",
+                      "    console.log('Set user_property_id from header:', cleanId);",
+                      "} else {",
+                      "    console.error('UserProperty ID not found in response headers');",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"{{property_title}}\",\n    \"property_type\": \"3_bedroom\",\n    \"description\": \"A beautiful 3-bedroom house in East Legon\",\n    \"location\": \"East Legon, Accra\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Create a new property as a verified property owner with valid property type (3_bedroom)"
+              }
+            },
+            {
+              "name": "Create Property with Each Valid Type",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "const timestamp = new Date().getTime();",
+                      "const propertyTypes = ['1_bedroom', '2_bedroom', '3_bedroom', '4_bedroom', '5_bedroom', 'gated_house'];",
+                      "const currentType = propertyTypes[pm.iterationData.get('index') || 0];",
+                      "pm.environment.set('current_property_type', currentType);",
+                      "pm.environment.set('property_title', `Test ${currentType} Property ${timestamp}`);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and correct property type\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('Property created successfully');",
+                      "    pm.expect(jsonData.status).to.equal('pending_verification');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"{{property_title}}\",\n    \"property_type\": \"{{current_property_type}}\",\n    \"description\": \"Test property with valid property type\",\n    \"location\": \"East Legon, Accra\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Create properties with each valid property type to ensure all types work"
+              }
+            },
+            {
+              "name": "Create Property as Unverified Owner",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Create and store token for unverified owner if needed"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has verification error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Account pending verification');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{unverified_owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Unverified Owner Property\",\n    \"property_type\": \"3_bedroom\",\n    \"description\": \"This should not be created\",\n    \"location\": \"East Legon, Accra\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Attempt to create a property as an unverified property owner"
+              }
+            },
+            {
+              "name": "Create Property as Property Seeker",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('You do not have permission to create properties');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{seeker_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Invalid Property\",\n    \"property_type\": \"3_bedroom\",\n    \"description\": \"This should not be created\",\n    \"location\": \"East Legon, Accra\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Attempt to create a property as a property seeker (should fail)"
+              }
+            },
+            {
+              "name": "Create Property with Invalid Type",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about property type\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid property type. Must be one of: 1_bedroom, 2_bedroom, 3_bedroom, 4_bedroom, 5_bedroom, gated_house');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Invalid Type Property\",\n    \"property_type\": \"invalid_type\",\n    \"description\": \"Property with invalid type\",\n    \"location\": \"East Legon, Accra\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Attempt to create a property with an invalid property type"
+              }
+            },
+            {
+              "name": "Create Property with Missing Fields",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about missing fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Missing fields');",
+                      "    pm.expect(jsonData.error).to.include('description');",
+                      "    pm.expect(jsonData.error).to.include('location');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Incomplete Property\",\n    \"property_type\": \"3_bedroom\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Attempt to create a property with missing required fields (description and location)"
+              }
+            },
+            {
+              "name": "Create Property without Authentication",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {",
+                      "    pm.response.to.have.status(401);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has authentication error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Authentication credentials were not provided');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"title\": \"Unauthenticated Property\",\n    \"property_type\": \"3_bedroom\",\n    \"description\": \"This should not be created\",\n    \"location\": \"East Legon, Accra\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/create/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "property",
+                    "create",
+                    ""
+                  ]
+                },
+                "description": "Attempt to create a property without authentication"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Property Verification",
+          "item": [
+            {
+              "name": "Get Unverified Properties",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array of properties with required fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.property('id');",
+                      "        pm.expect(jsonData[0]).to.have.property('title');",
+                      "        pm.expect(jsonData[0]).to.have.property('description');",
+                      "        pm.expect(jsonData[0]).to.have.property('location');",
+                      "        pm.expect(jsonData[0]).to.have.property('owner');",
+                      "        pm.expect(jsonData[0].owner).to.have.property('id');",
+                      "        pm.expect(jsonData[0].owner).to.have.property('email');",
+                      "        pm.expect(jsonData[0].owner).to.have.property('full_name');",
+                      "        pm.expect(jsonData[0]).to.have.property('created_at');",
+                      "        pm.expect(jsonData[0]).to.have.property('documents');",
+                      "        pm.expect(jsonData[0]).to.have.property('images');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/property/unverified/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "unverified", ""]
+                },
+                "description": "Get list of unverified properties (requires land commission rep or admin permissions)"
+              }
+            },
+            {
+              "name": "Verify Property as Land Commission Rep",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and verification status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
+                      "    pm.expect(jsonData.verification_status).to.equal('approved');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Verify a property as a land commission representative"
+              }
+            },
+            {
+              "name": "Reject Property as Land Commission Rep",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and required fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Property rejected successfully');",
+                      "    pm.expect(jsonData).to.have.property('rejection_reason');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"reason\": \"Incomplete documentation\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/reject/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "reject", ""]
+                },
+                "description": "Reject a property as a land commission representative"
+              }
+            },
+            {
+              "name": "Verify Property with Invalid Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about invalid status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('verification_status must be either approved or rejected');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"invalid_status\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify property with invalid status"
+              }
+            },
+            {
+              "name": "Verify Property with Missing Fields",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about missing fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('user_property_id and verification_status are required');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify property with missing required fields"
+              }
+            },
+            {
+              "name": "Verify Property as Property Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify property as a property owner (should fail)"
+              }
+            },
+            {
+              "name": "Verify Non-Existent Property",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about property not found\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Property not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"999999\",\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify a non-existent property"
+              }
+            },
+            {
+              "name": "Reject Property with Missing Reason",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about missing reason\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Rejection reason is required');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/reject/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "reject", ""]
+                },
+                "description": "Attempt to reject property without providing a reason"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Property Listing",
+          "item": []
+        },
+        {
+          "name": "2.4 Property Details",
+          "item": []
+        },
+        {
+          "name": "2.5 Property Images",
+          "item": []
+        },
+        {
+          "name": "2.6 Property Documents",
+          "item": []
+        }
+      ]
+    },
+    {
+      "name": "3. Blockchain Integration",
+      "description": "Tests for blockchain ownership registration and verification",
+      "item": [
+        {
+          "name": "3.1 Property Registration on Blockchain",
+          "item": []
+        },
+        {
+          "name": "3.2 Ownership Verification",
+          "item": []
+        },
+        {
+          "name": "3.3 Chain Integrity",
+          "item": []
+        },
+        {
+          "name": "3.4 Property History",
+          "item": []
+        }
+      ]
+    },
+    {
+      "name": "4. Role-Based Access Control",
+      "description": "Tests for permissions and access control across different user roles",
+      "item": [
+        {
+          "name": "4.1 Admin Access",
+          "item": []
+        },
+        {
+          "name": "4.2 Land Commission Access",
+          "item": []
+        },
+        {
+          "name": "4.3 Property Owner Access",
+          "item": []
+        },
+        {
+          "name": "4.4 Property Seeker Access",
+          "item": []
+        }
+      ]
+    },
+    {
+      "name": "5. End-to-End Scenarios",
+      "description": "Complete business flows from registration to verification and listing",
+      "item": [
+        {
+          "name": "5.1 Property Owner Journey",
+          "item": []
+        },
+        {
+          "name": "5.2 Property Seeker Journey",
+          "item": []
+        },
+        {
+          "name": "5.3 Admin Verification Flow",
+          "item": []
+        },
+        {
+          "name": "5.4 Land Commission Flow",
+          "item": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@trustrent.com",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin@123",
+      "type": "string"
+    }
+  ]
+} 
