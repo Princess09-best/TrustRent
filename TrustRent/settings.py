@@ -52,9 +52,17 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'core.auth.CustomJWTAuthentication',
+        'core.auth.EmailAuthBackend',
     ),
     'UNAUTHENTICATED_USER': None
 }
+
+# Custom auth settings
+AUTH_USER_MODEL = 'core.User'
+AUTHENTICATION_BACKENDS = [
+    'core.auth.EmailAuthBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # JWT settings
 from datetime import timedelta

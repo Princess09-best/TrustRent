@@ -1,7 +1,8 @@
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.files.storage import default_storage
+from django.contrib.auth.hashers import make_password, check_password
 import hashlib
 
 class UserManager(BaseUserManager):
@@ -12,6 +13,8 @@ class UserManager(BaseUserManager):
         user = self.model(email=email, **extra_fields)
         if password:
             user.set_password(password)
+        else:
+            user.set_unusable_password()
         user.save(using=self._db)
         return user
 
@@ -22,7 +25,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 # User Model
-class User(models.Model):
+class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('property_owner', 'Property Owner'),
         ('property_seeker', 'Property Seeker'),
@@ -34,17 +37,56 @@ class User(models.Model):
     lastname = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15)
-    password_hash = models.TextField()
     role = models.CharField(max_length=25, choices=ROLE_CHOICES)
     id_type = models.CharField(max_length=50)
     id_value = models.CharField(max_length=100)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True)
+    password = models.CharField(max_length=128, null=True)  # Make password nullable initially
+
+    objects = UserManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['firstname', 'lastname', 'role']
 
     def __str__(self):
         return f"{self.firstname} {self.lastname} ({self.role})"
+
+    def has_permission(self, permission):
+        from .permissions import ROLE_PERMISSIONS
+        allowed_permissions = ROLE_PERMISSIONS.get(self.role, [])
+        return permission in allowed_permissions
+
+    @property
+    def is_authenticated(self):
+        """
+        Always return True. This is a way to tell if the user has been
+        authenticated in templates.
+        """
+        return True
+
+    @property
+    def is_anonymous(self):
+        """
+        Always return False. This is a way to tell if the user is
+        anonymous in templates.
+        """
+        return False
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def save(self, *args, **kwargs):
+        if self.pk is None:  # New user
+            if not self.password:
+                self.set_unusable_password()
+        super().save(*args, **kwargs)
 
 
 # Property Model
@@ -64,15 +106,15 @@ class Property(models.Model):
         ('unlisted', 'Unlisted'),
     ]
 
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=255)
     property_type = models.CharField(max_length=20, choices=PROPERTY_TYPE_CHOICES)
     description = models.TextField()
-    location = models.CharField(max_length=150, help_text="Enter the full address including street number, street name, city/town, and GPS coordinates if available.")
+    location = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unlisted')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} ({self.property_type}) - {self.status}"
+        return self.title
 
 
 # Property Image Model

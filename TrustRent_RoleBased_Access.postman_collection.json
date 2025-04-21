@@ -1,0 +1,178 @@
+{
+	"info": {
+		"_postman_id": "trustrent-role-based-access",
+		"name": "TrustRent Role Based Access",
+		"description": "Collection for testing role-based access control in TrustRent",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "User Registration",
+			"item": [
+				{
+					"name": "Register Property Owner",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"owner@example.com\",\n    \"phone_number\": \"1234567890\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"passport\",\n    \"id_value\": \"AB123456\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/register/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "register", ""]
+						},
+						"description": "Register a new property owner"
+					}
+				},
+				{
+					"name": "Register Property Seeker",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Jane\",\n    \"lastname\": \"Smith\",\n    \"email\": \"seeker@example.com\",\n    \"phone_number\": \"0987654321\",\n    \"role\": \"property_seeker\",\n    \"id_type\": \"passport\",\n    \"id_value\": \"CD789012\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/register/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "register", ""]
+						},
+						"description": "Register a new property seeker"
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin Operations",
+			"item": [
+				{
+					"name": "Login as Admin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"adminpassword\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/login/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "login", ""]
+						},
+						"description": "Login as system admin to get JWT token"
+					}
+				},
+				{
+					"name": "Create Land Commission Rep",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"description": "JWT token obtained from admin login"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Robert\",\n    \"lastname\": \"Wilson\",\n    \"email\": \"landrep@example.com\",\n    \"phone_number\": \"5555555555\",\n    \"role\": \"land_commission_rep\",\n    \"id_type\": \"passport\",\n    \"id_value\": \"EF345678\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/admin/create-account/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "admin", "create-account", ""]
+						},
+						"description": "Create a new land commission representative (requires admin permissions)"
+					}
+				},
+				{
+					"name": "Get Unverified Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"description": "JWT token obtained from admin login"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/unverified/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "unverified", ""]
+						},
+						"description": "Get list of unverified users (requires admin permissions)"
+					}
+				},
+				{
+					"name": "Verify User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"description": "JWT token obtained from admin login"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": 1\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/verify/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "verify", ""]
+						},
+						"description": "Verify a user (requires admin permissions)"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+} 

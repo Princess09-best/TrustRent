@@ -1,0 +1,416 @@
+{
+	"info": {
+		"_postman_id": "trustrent-role-based-access",
+		"name": "TrustRent Role Based Access",
+		"description": "Collection for testing role-based access control in TrustRent",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Setup System Admin",
+			"item": [
+				{
+					"name": "Create System Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has correct data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('sys_admin account created successfully');",
+									"    pm.expect(jsonData.email).to.equal('admin@trustrent.com');",
+									"    pm.expect(jsonData.role).to.equal('sys_admin');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"System\",\n    \"lastname\": \"Admin\",\n    \"email\": \"admin@trustrent.com\",\n    \"phone_number\": \"+233111222333\",\n    \"role\": \"sys_admin\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-000000000-0\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/admin/create-account/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "admin", "create-account", ""]
+						},
+						"description": "Create the initial system admin user"
+					}
+				}
+			]
+		},
+		{
+			"name": "User Registration",
+			"item": [
+				{
+					"name": "Register Property Owner",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate a unique email using timestamp",
+									"const timestamp = new Date().getTime();",
+									"const email = `owner_${timestamp}@example.com`;",
+									"pm.environment.set('owner_email', email);",
+									"pm.variables.set('test_owner_email', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has correct message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('Registration successful');",
+									"    pm.expect(jsonData.status).to.equal('pending_verification');",
+									"    pm.expect(jsonData.is_verified).to.equal(false);",
+									"});",
+									"",
+									"pm.test(\"Response has user ID header\", function () {",
+									"    pm.response.to.have.header('X-User-Id');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"{{test_owner_email}}\",\n    \"phone_number\": \"+233123456789\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-123456789-0\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/register/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "register", ""]
+						},
+						"description": "Register a new property owner"
+					}
+				},
+				{
+					"name": "Register Property Seeker",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate a unique email using timestamp",
+									"const timestamp = new Date().getTime();",
+									"const email = `seeker_${timestamp}@example.com`;",
+									"pm.environment.set('seeker_email', email);",
+									"pm.variables.set('test_seeker_email', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has correct message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('Registration successful');",
+									"    pm.expect(jsonData.status).to.equal('pending_verification');",
+									"    pm.expect(jsonData.is_verified).to.equal(false);",
+									"});",
+									"",
+									"pm.test(\"Response has user ID header\", function () {",
+									"    pm.response.to.have.header('X-User-Id');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Jane\",\n    \"lastname\": \"Smith\",\n    \"email\": \"{{test_seeker_email}}\",\n    \"phone_number\": \"+233987654321\",\n    \"role\": \"property_seeker\",\n    \"id_type\": \"Passport\",\n    \"id_value\": \"L1234567\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/register/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "register", ""]
+						},
+						"description": "Register a new property seeker"
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin Operations",
+			"item": [
+				{
+					"name": "Login as Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has success message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.equal('Login successful');",
+									"});",
+									"",
+									"pm.test(\"Response has authorization headers\", function () {",
+									"    pm.response.to.have.header('Authorization');",
+									"    pm.response.to.have.header('X-Refresh-Token');",
+									"    ",
+									"    // Extract token from Authorization header (remove 'Bearer ' prefix)",
+									"    const authHeader = pm.response.headers.get('Authorization');",
+									"    const token = authHeader.replace('Bearer ', '');",
+									"    ",
+									"    // Save tokens for other requests",
+									"    pm.collectionVariables.set('admin_token', token);",
+									"    pm.collectionVariables.set('refresh_token', pm.response.headers.get('X-Refresh-Token'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@trustrent.com\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/login/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "login", ""]
+						},
+						"description": "Login as system admin to get JWT token"
+					}
+				},
+				{
+					"name": "Create Land Commission Rep",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate a unique email using timestamp",
+									"const timestamp = new Date().getTime();",
+									"const email = `landrep_${timestamp}@example.com`;",
+									"pm.environment.set('landrep_email', email);",
+									"pm.variables.set('test_landrep_email', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has correct data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('land_commission_rep account created successfully');",
+									"    pm.expect(jsonData.email).to.equal('landrep@example.com');",
+									"    pm.expect(jsonData.role).to.equal('land_commission_rep');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"description": "JWT token obtained from admin login"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Robert\",\n    \"lastname\": \"Wilson\",\n    \"email\": \"{{test_landrep_email}}\",\n    \"phone_number\": \"+233555555555\",\n    \"role\": \"land_commission_rep\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-987654321-0\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/admin/create-account/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "admin", "create-account", ""]
+						},
+						"description": "Create a new land commission representative (requires admin permissions)"
+					}
+				},
+				{
+					"name": "Get Unverified Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Users have required fields\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('id');",
+									"        pm.expect(jsonData[0]).to.have.property('email');",
+									"        pm.expect(jsonData[0]).to.have.property('role');",
+									"        pm.expect(jsonData[0].is_verified).to.equal(false);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"description": "JWT token obtained from admin login"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/unverified/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "unverified", ""]
+						},
+						"description": "Get list of unverified users (requires admin permissions)"
+					}
+				},
+				{
+					"name": "Verify User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has success message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('verified successfully');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"description": "JWT token obtained from admin login"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": {{user_id}}\n}"
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/user/verify/",
+							"protocol": "http",
+							"host": ["127", "0", "0", "1"],
+							"port": "8000",
+							"path": ["api", "user", "verify", ""]
+						},
+						"description": "Verify a user (requires admin permissions)"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+} 

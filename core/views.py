@@ -1,14 +1,14 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import User, Property
+from .models import User, Property, PropertyImage, UserProperty, VerificationHistory
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.timezone import now
 import re
 from django.shortcuts import render
 from django.utils import timezone
-from django.db import connections
+from django.db import connections, connection
 from django.views.decorators.http import require_POST
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -19,13 +19,24 @@ from ledger.models import PropertyLedger
 import hashlib
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .models import UserProperty
+from .permissions import (
+    UserPermission, 
+    has_permission, 
+    UserRole, 
+    SYSTEM_ALLOWED_ROLES, 
+    HasUserPermission,
+    ROLE_PERMISSIONS
+)
+
+# Global variable for role permissions
+ROLE_PERMISSIONS = ROLE_PERMISSIONS
 
 # Registering a new user
-@csrf_exempt
-@require_http_methods(["POST", "OPTIONS"])
+@api_view(['POST', 'OPTIONS'])
+@permission_classes([HasUserPermission(UserPermission.REGISTER_ACCOUNT.value)])
 def register_user(request):
     if request.method == "OPTIONS":
         response = JsonResponse({})
@@ -64,8 +75,8 @@ def register_user(request):
         if len(data['password']) < 8:
             return JsonResponse({'error': 'Password must be at least 8 characters long'}, status=400)
 
-        # Validate role
-        valid_roles = ['property_owner', 'property_seeker']
+        # Validate role based on access matrix
+        valid_roles = [UserRole.PROPERTY_OWNER.value, UserRole.PROPERTY_SEEKER.value]
         if data['role'] not in valid_roles:
             return JsonResponse({'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}, status=400)
 
@@ -85,15 +96,13 @@ def register_user(request):
                         ('Use format: GHA-XXXXXXXXX-X' if data['id_type'] == 'Ghana Card' else 'Use format: LXXXXXXX')
             }, status=400)
 
-        # Hash the password before saving
-        hashed_password = make_password(data['password'])
-
-        user = User.objects.create(
+        # Create the user
+        user = User.objects.create_user(
+            email=data['email'],
+            password=data['password'],
             firstname=data['firstname'],
             lastname=data['lastname'],
-            email=data['email'],
             phone_number=data['phone_number'],
-            password_hash=hashed_password,
             role=data['role'],
             id_type=data['id_type'],
             id_value=data['id_value'],
@@ -132,47 +141,36 @@ def login_user(request):
         try:
             user = User.objects.get(email=email)
             
-            # For users registered before password hashing was implemented
-            if not user.password_hash.startswith('pbkdf2_sha256$'):
-                user.password_hash = make_password(user.password_hash)
-                user.save()
-
-            if not check_password(password, user.password_hash):
-                return JsonResponse({'error': 'Invalid email or password'}, status=401)
+            if not user.check_password(password):
+                return JsonResponse({'error': 'Invalid credentials'}, status=401)
             
-            # Only check verification after password is confirmed
             if not user.is_verified:
                 return JsonResponse({
-                    'error': 'Account pending verification. Please wait for verification email.',
-                    'is_verified': False
+                    'error': 'Account pending verification',
+                    'status': 'pending'
                 }, status=403)
 
-            # Generate JWT token properly using for_user
+            # Generate JWT token
             refresh = RefreshToken.for_user(user)
-            # Add custom claims
-            refresh['email'] = user.email
-            refresh['role'] = user.role
-
-            # Updating last_login
+            
+            # Update last login
             user.last_login = now()
             user.save()
 
-            return JsonResponse({
-                'message': 'Login successful',
-                'token': str(refresh.access_token),
-                'refresh_token': str(refresh),
-                'role': user.role,
-                'is_verified': user.is_verified,
-                'name': f"{user.firstname} {user.lastname}"
-            })
+            # Set tokens in response headers
+            response = JsonResponse({'message': 'Login successful'})
+            response['Authorization'] = f'Bearer {str(refresh.access_token)}'
+            response['X-Refresh-Token'] = str(refresh)
+            
+            return response
 
         except User.DoesNotExist:
-            return JsonResponse({'error': 'Invalid email or password'}, status=401)
+            return JsonResponse({'error': 'Invalid credentials'}, status=401)
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Login failed'}, status=500)
 
 #function for admin to get all unverified users
 @csrf_exempt
@@ -230,11 +228,26 @@ def verify_user(request):
 
 # Creating a property by property owner only
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([HasUserPermission(UserPermission.CREATE_PROPERTY.value)])
 def create_property(request):
     try:
-        data = json.loads(request.body)
+        print("\n=== Create Property Debug ===")
+        print(f"User: {request.user}")
+        print(f"User role: {request.user.role}")
+        print(f"User permissions: {ROLE_PERMISSIONS.get(request.user.role, [])}")
+        print(f"Required permission: {UserPermission.CREATE_PROPERTY.value}")
+        print(f"Is authenticated: {request.user.is_authenticated}")
+        print(f"Is superuser: {getattr(request.user, 'is_superuser', False)}")
+        
+        # Explicitly check permission again
+        if UserPermission.CREATE_PROPERTY.value not in ROLE_PERMISSIONS.get(request.user.role, []):
+            print("Permission denied - user does not have CREATE_PROPERTY permission")
+            return Response(
+                {'error': 'You do not have permission to create properties'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
 
+        data = json.loads(request.body)
         required_fields = ['title', 'property_type', 'description', 'location']
         missing = [f for f in required_fields if f not in data]
         if missing:
@@ -275,13 +288,17 @@ def create_property(request):
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
+        print(f"Error in create_property: {str(e)}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Uploading a document
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([HasUserPermission(UserPermission.UPLOAD_PROPERTY_DOCUMENT.value)])
 def upload_document(request):
     try:
+        print(f"User role: {request.user.role}")
+        print(f"User permissions: {ROLE_PERMISSIONS.get(request.user.role, [])}")
+        
         property_id = request.POST.get('property_id')
         file = request.FILES.get('attachment')
 
@@ -336,55 +353,43 @@ def upload_document(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Getting all unverified properties by land commission representative 
-@csrf_exempt
-@require_http_methods(["GET"])
+@api_view(['GET'])
+@permission_classes([HasUserPermission(UserPermission.VIEW_UNVERIFIED_PROPERTIES.value)])
 def get_unverified_properties(request):
+    """
+    Get a list of all unverified properties.
+    Only accessible by land commission representatives and system admins.
+    """
     try:
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                    up.id as user_property_id,
-                    up.owner_id,
-                    u.firstname,
-                    u.lastname,
-                    p.id as property_id,
-                    p.title as property_title,
-                    p.location as property_location,
-                    up.verification_status,
-                    pd.attachment as document_url
-                FROM 
-                    core_userproperty up
-                    JOIN core_user u ON up.owner_id = u.id
-                    JOIN core_property p ON up.property_id = p.id
-                    LEFT JOIN core_propertydocument pd ON pd.user_property_id = up.id
-                WHERE 
-                    up.is_verified = false 
-                    AND up.verification_status = 'pending'
-            """)
-            rows = cursor.fetchall()
-
-        data = []
-        for row in rows:
-            data.append({
-                "user_property_id": row[0],
-                "owner_id": row[1],
-                "owner_name": f"{row[2]} {row[3]}",
-                "property_id": row[4],
-                "property_title": row[5],
-                "property_location": row[6],
-                "verification_status": row[7],
-                "document_url": row[8] if row[8] else None
-            })
+        unverified_properties = UserProperty.objects.filter(
+            is_verified=False,
+            is_active=True
+        ).select_related('property', 'owner')
         
-        return JsonResponse(data, safe=False)
-
+        properties_data = []
+        for user_property in unverified_properties:
+            property_data = {
+                'id': user_property.property.id,
+                'title': user_property.property.title,
+                'description': user_property.property.description,
+                'location': user_property.property.location,
+                'owner': {
+                    'id': user_property.owner.id,
+                    'email': user_property.owner.email,
+                    'full_name': f"{user_property.owner.firstname} {user_property.owner.lastname}"
+                },
+                'created_at': user_property.created_at,
+                'documents': [doc.attachment.url for doc in user_property.documents.all()],
+                'images': [img.image.url for img in user_property.property.images.all()]
+            }
+            properties_data.append(property_data)
+        
+        return JsonResponse(properties_data, safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-# Verifying a property by land commission representative
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([HasUserPermission(UserPermission.VERIFY_PROPERTY.value)])
 def verify_property(request):
     """
     Verify a property and register it on the blockchain if approved
@@ -393,6 +398,8 @@ def verify_property(request):
         # Get required fields from request
         user_property_id = request.data.get('user_property_id')
         verification_status = request.data.get('verification_status')
+
+        print(f"DEBUG: Verify property request - ID: {user_property_id}, Status: {verification_status}")
 
         if not user_property_id or not verification_status:
             return Response(
@@ -414,6 +421,10 @@ def verify_property(request):
                 {'error': 'Property not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
+            
+        # Store current status for verification history
+        previous_status = user_property.verification_status
+        print(f"DEBUG: Previous status: {previous_status}, New status: {verification_status}")
 
         # Update verification status and timestamps
         verification_time = timezone.now()
@@ -456,12 +467,53 @@ def verify_property(request):
                 }, status=status.HTTP_200_OK)
                 
             except Exception as e:
+                print(f"DEBUG: Exception in blockchain registration: {str(e)}")
                 return Response({
                     'error': f'Error registering property on blockchain: {str(e)}'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # If rejected, just save the status
         user_property.save()
+        
+        # Create verification history entry - always create it regardless of status change
+        # This ensures we have a record of every verification attempt
+        try:
+            # Create history entry
+            history_data = {
+                'user_property_id': user_property.id,  # Use ID directly instead of object
+                'previous_status': previous_status,
+                'new_status': verification_status,
+                'changed_at': verification_time
+            }
+            
+            # Force insert directly into the database to bypass any model-level issues
+            with connection.cursor() as cursor:
+                fields = ', '.join(history_data.keys())
+                placeholders = ', '.join(['%s'] * len(history_data))
+                values = [history_data[key] for key in history_data.keys()]
+                
+                query = f"INSERT INTO core_verificationhistory ({fields}) VALUES ({placeholders}) RETURNING id"
+                print(f"DEBUG: SQL Query: {query}")
+                print(f"DEBUG: SQL Values: {values}")
+                
+                # Check if table exists and its structure
+                cursor.execute("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'core_verificationhistory')")
+                table_exists = cursor.fetchone()[0]
+                print(f"DEBUG: Table exists: {table_exists}")
+                
+                if table_exists:
+                    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'core_verificationhistory'")
+                    columns = [col[0] for col in cursor.fetchall()]
+                    print(f"DEBUG: Table columns: {columns}")
+                
+                cursor.execute(query, values)
+                history_id = cursor.fetchone()[0]
+                connection.commit()  # Make sure we commit the transaction
+                print(f"DEBUG: Successfully created verification history with ID: {history_id}")
+        except Exception as e:
+            print(f"DEBUG: Failed to create verification history: {str(e)}")
+            # Continue execution - don't fail the whole request if history creation fails
+            
         return Response({
             'message': 'Property verification status updated.',
             'verification_status': verification_status,
@@ -469,13 +521,16 @@ def verify_property(request):
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
+        print(f"DEBUG: Exception in verify_property: {str(e)}")
         return Response({
             'error': f'Error processing verification: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Rejecting a property by land commission representative
-@csrf_exempt
-@require_http_methods(["PATCH"])
+
+
+    
+@api_view(['POST'])
+@permission_classes([HasUserPermission(UserPermission.REJECT_PROPERTY.value)])
 def reject_property(request):
     try:
         data = json.loads(request.body)
@@ -497,11 +552,14 @@ def reject_property(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
+@permission_classes([HasUserPermission(UserPermission.UPLOAD_PROPERTY_IMAGE.value)])
 def upload_property_image(request):
     """Upload an image for a property"""
     try:
+        print(f"User role: {request.user.role}")
+        print(f"User permissions: {ROLE_PERMISSIONS.get(request.user.role, [])}")
+        
         property_id = request.POST.get('property_id')
         image = request.FILES.get('image')
 
@@ -518,29 +576,26 @@ def upload_property_image(request):
             return JsonResponse({'error': 'Image size too large. Maximum size is 10MB.'}, status=400)
 
         # Verify property exists and user has access
-        with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                SELECT up.id 
-                FROM core_userproperty up
-                JOIN core_property p ON up.property_id = p.id
-                WHERE p.id = %s AND up.owner_id = %s AND up.is_active = true
-            """, [property_id, request.POST.get('user_id')])
-            
-            if not cursor.fetchone():
-                return JsonResponse({'error': 'Property not found or access denied'}, status=404)
+        try:
+            user_property = UserProperty.objects.get(
+                property_id=property_id,
+                owner=request.user,
+                is_active=True
+            )
+        except UserProperty.DoesNotExist:
+            return JsonResponse({'error': 'Property not found or you do not have permission'}, status=404)
 
-            # Save the image file
-            file_name = f"property_{property_id}_{image.name}"
-            saved_file_path = default_storage.save(f'property_images/{file_name}', ContentFile(image.read()))
+        # Save the image file
+        file_name = f"property_{property_id}_{image.name}"
+        saved_file_path = default_storage.save(f'property_images/{file_name}', ContentFile(image.read()))
 
-            # Create PropertyImage record
-            cursor.execute("""
-                INSERT INTO core_propertyimage 
-                (property_id, image, is_active, uploaded_at) 
-                VALUES (%s, %s, %s, %s) RETURNING id
-            """, [property_id, saved_file_path, True, timezone.now()])
-            
-            image_id = cursor.fetchone()[0]
+        # Create PropertyImage record
+        PropertyImage.objects.create(
+            property_id=property_id,
+            image=saved_file_path,
+            is_active=True,
+            uploaded_at=timezone.now()
+        )
 
         return JsonResponse({
             'message': 'Image uploaded successfully. The image will be displayed once processed.',
@@ -554,7 +609,7 @@ def upload_property_image(request):
 @require_http_methods(["GET"])
 def get_all_properties(request):
     try:
-        with connections['core'].cursor() as cursor:
+        with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT 
                     p.id,
@@ -612,7 +667,7 @@ def get_property_detail(request, property_id):
         property_data = {}
         
         # First get property details from core database
-        with connections['core'].cursor() as cursor:
+        with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT 
                     p.id, p.title, p.property_type, p.description, 
@@ -655,7 +710,7 @@ def get_property_detail(request, property_id):
             property_data['images'] = [row[0] for row in cursor.fetchall()]
 
         # Then get listing details from ops database
-        with connections['ops'].cursor() as cursor:
+        with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT id, listing_type, price
                 FROM ops_propertylisting 
@@ -689,7 +744,7 @@ def request_document_access(request):
         requester = request.user
 
         # Verify property exists and is available
-        with connections['core'].cursor() as cursor:
+        with connection.cursor() as cursor:
             # First verify the requester is a property seeker
             if requester.role != 'property_seeker':
                 return Response({
@@ -770,7 +825,7 @@ def respond_to_document_request(request):
         if decision not in ['approved', 'denied']:
             return Response({'error': 'Invalid decision. Must be either "approved" or "denied"'}, status=status.HTTP_400_BAD_REQUEST)
 
-        with connections['core'].cursor() as cursor:
+        with connection.cursor() as cursor:
             # Verify the request exists and owner has rights
             cursor.execute("""
                 SELECT dar.status, up.owner_id, u.email as requester_email
@@ -815,7 +870,7 @@ def get_document_requests(request):
     try:
         role = request.user.role
 
-        with connections['core'].cursor() as cursor:
+        with connection.cursor() as cursor:
             if role == 'property_owner':
                 # Get requests for owner's properties
                 cursor.execute("""
@@ -873,3 +928,87 @@ def get_document_requests(request):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([HasUserPermission(UserPermission.CREATE_ADMIN_ACCOUNT.value)])
+def create_admin_account(request):
+    """
+    Endpoint for system administrators to create land commission rep and admin accounts.
+    Only accessible by existing system administrators.
+    """
+    try:
+        data = json.loads(request.body)
+        # Validate required fields
+        required_fields = ['firstname', 'lastname', 'email', 'phone_number', 'password', 'role', 'id_type', 'id_value']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({'error': f'{field} is required'}, status=400)
+        
+        # Validate email format
+        try:
+            validate_email(data['email'])
+        except ValidationError:
+            return JsonResponse({'error': 'Invalid email format'}, status=400)
+
+        # Check if email already exists
+        if User.objects.filter(email=data['email']).exists():
+            return JsonResponse({'error': 'Email already registered'}, status=400)
+
+        # Validate phone number format (Ghana format: +233XXXXXXXXX)
+        phone_pattern = r'^\+233[0-9]{9}$'
+        if not re.match(phone_pattern, data['phone_number']):
+            return JsonResponse({'error': 'Invalid phone number format. Use format: +233XXXXXXXXX'}, status=400)
+
+        # Validate password strength
+        if len(data['password']) < 8:
+            return JsonResponse({'error': 'Password must be at least 8 characters long'}, status=400)
+
+        # Validate role - only allow system roles
+        if data['role'] not in SYSTEM_ALLOWED_ROLES:
+            return JsonResponse({
+                'error': f'Invalid role. Must be one of: {", ".join(SYSTEM_ALLOWED_ROLES)}'
+            }, status=400)
+
+        # Validate ID type and value
+        valid_id_types = ['Ghana Card', 'Passport']
+        if data['id_type'] not in valid_id_types:
+            return JsonResponse({'error': f'Invalid ID type. Must be one of: {", ".join(valid_id_types)}'}, status=400)
+
+        # Validate ID value format
+        id_patterns = {
+            'Ghana Card': r'^GHA-\d{9}-\d$',
+            'Passport': r'^[A-Z]{1}\d{7}$'
+        }
+        if not re.match(id_patterns[data['id_type']], data['id_value']):
+            return JsonResponse({
+                'error': f'Invalid {data["id_type"]} format. ' + 
+                        ('Use format: GHA-XXXXXXXXX-X' if data['id_type'] == 'Ghana Card' else 'Use format: LXXXXXXX')
+            }, status=400)
+
+        # Create the admin/land rep account - automatically verified
+        user = User.objects.create_user(
+            email=data['email'],
+            password=data['password'],
+            firstname=data['firstname'],
+            lastname=data['lastname'],
+            phone_number=data['phone_number'],
+            role=data['role'],
+            id_type=data['id_type'],
+            id_value=data['id_value'],
+            is_verified=True,  # Admin created accounts are automatically verified
+            is_staff=True if data['role'] == UserRole.SYS_ADMIN.value else False,
+            is_superuser=True if data['role'] == UserRole.SYS_ADMIN.value else False
+        )
+        
+        response = JsonResponse({
+            'message': f'{data["role"]} account created successfully.',
+            'email': user.email,
+            'role': user.role
+        }, status=201)
+        
+        return response
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

@@ -3,6 +3,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import AccessToken
 from django.conf import settings
 from .models import User
+from django.contrib.auth.backends import BaseBackend
 
 class CustomJWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
@@ -31,9 +32,6 @@ class CustomJWTAuthentication(BaseAuthentication):
             except User.DoesNotExist:
                 raise AuthenticationFailed('User not found or inactive')
                 
-            # Add authentication property
-            user.is_authenticated = True
-            
             return (user, None)
             
         except Exception as e:
@@ -42,7 +40,24 @@ class CustomJWTAuthentication(BaseAuthentication):
     def get_user(self, user_id):
         try:
             user = User.objects.get(id=user_id, is_active=True)
-            setattr(user, 'is_authenticated', True)
             return user
         except User.DoesNotExist:
             return None 
+
+class EmailAuthBackend(BaseBackend):
+    def authenticate(self, request, email=None, password=None):
+        try:
+            user = User.objects.get(email=email)
+            if user.check_password(password):
+                return user
+        except User.DoesNotExist:
+            return None
+
+    def get_user(self, user_id):
+        try:
+            return User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return None
+
+    def has_perm(self, user_obj, perm):
+        return user_obj.has_permission(perm) 

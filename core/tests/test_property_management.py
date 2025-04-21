@@ -18,27 +18,29 @@ class PropertyManagementTests(TestCase):
         # Create test property owner
         cursor.execute("""
             INSERT INTO core_user (
-                firstname, lastname, email, phone_number, password_hash,
-                role, id_type, id_value, is_verified, created_at, is_active
+                firstname, lastname, email, phone_number, password,
+                role, id_type, id_value, is_verified, created_at, is_active,
+                is_staff, is_superuser, last_login
             ) VALUES (
                 'Test', 'Owner', 'testowner@example.com', '+233555555555',
                 %s, 'property_owner', 'Ghana Card', 'GHA-123456789-1',
-                true, %s, true
+                true, %s, true, false, false, %s
             ) RETURNING id
-        """, [make_password('testpass123'), timezone.now()])
+        """, [make_password('testpass123'), timezone.now(), timezone.now()])
         self.owner_id = cursor.fetchone()[0]
         
         # Create test land commission representative
         cursor.execute("""
             INSERT INTO core_user (
-                firstname, lastname, email, phone_number, password_hash,
-                role, id_type, id_value, is_verified, created_at, is_active
+                firstname, lastname, email, phone_number, password,
+                role, id_type, id_value, is_verified, created_at, is_active,
+                is_staff, is_superuser, last_login
             ) VALUES (
                 'LC', 'Rep', 'lc.rep@landcomm.go.ke', '+233555555556',
                 %s, 'land_commission_rep', 'Ghana Card', 'GHA-987654321-1',
-                true, %s, true
+                true, %s, true, true, false, %s
             ) RETURNING id
-        """, [make_password('securepass123'), timezone.now()])
+        """, [make_password('securepass123'), timezone.now(), timezone.now()])
         self.lc_rep_id = cursor.fetchone()[0]
         
         # Create test files

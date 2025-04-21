@@ -14,7 +14,8 @@ from .views import (
     get_property_detail,
     request_document_access,
     respond_to_document_request,
-    get_document_requests
+    get_document_requests,
+    create_admin_account
 )
 
 urlpatterns = [
@@ -23,6 +24,7 @@ urlpatterns = [
     path('user/login/', login_user, name='login_user'),
     path('user/unverified/', get_unverified_users, name='get_unverified_users'),
     path('user/verify/', verify_user, name='verify_user'),
+    path('admin/create-account/', create_admin_account, name='create_admin_account'),
     
     # Property endpoints - specific routes first
     path('property/create/', create_property, name='create_property'),
