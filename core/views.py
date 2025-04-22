@@ -451,11 +451,11 @@ def verify_property(request):
         # If approving, check that required documents are uploaded
         if verification_status == 'approved':
             # Check if the property has at least one document uploaded
-            if not user_property.document_path or not user_property.document_hash:
-                return Response(
-                    {'error': 'Property cannot be approved without at least one document uploaded.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            #if not user_property.document_path or not user_property.document_hash:
+                #return Response(
+                    #{'error': 'Property cannot be approved without at least one document uploaded.'},
+                    #status=status.HTTP_400_BAD_REQUEST
+                #)
                 
             # Check if the property has at least one image (optional check)
             images_count = PropertyImage.objects.filter(
