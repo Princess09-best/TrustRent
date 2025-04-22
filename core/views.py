@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import User, Property, PropertyImage, UserProperty, VerificationHistory
+from .models import User, Property, PropertyImage, UserProperty, VerificationHistory, PropertyDocument
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.timezone import now
@@ -360,6 +360,15 @@ def upload_document(request):
         user_property.document_hash = document_hash
         user_property.document_uploaded_at = timezone.now()
         user_property.save()
+
+        # Create PropertyDocument record
+        PropertyDocument.objects.create(
+            user_property_id=user_property.id,
+            attachment=saved_path,
+           
+            uploaded_at=timezone.now()
+        )
+
 
         return Response({
             'message': 'Document uploaded successfully. The document will be reviewed during property verification.',

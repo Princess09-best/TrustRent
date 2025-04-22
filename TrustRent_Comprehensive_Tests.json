@@ -2106,10 +2106,10 @@
           ]
         },
         {
-          "name": "2.2 Property Verification",
+          "name": "2.2 Property Images",
           "item": [
             {
-              "name": "Get Unverified Properties",
+              "name": "Upload Property Image",
               "event": [
                 {
                   "listen": "test",
@@ -2119,396 +2119,11 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Response is an array of properties with required fields\", function () {",
+                      "pm.test(\"Response has success message and status\", function () {",
                       "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData).to.be.an('array');",
-                      "    if (jsonData.length > 0) {",
-                      "        pm.expect(jsonData[0]).to.have.property('id');",
-                      "        pm.expect(jsonData[0]).to.have.property('title');",
-                      "        pm.expect(jsonData[0]).to.have.property('description');",
-                      "        pm.expect(jsonData[0]).to.have.property('location');",
-                      "        pm.expect(jsonData[0]).to.have.property('owner');",
-                      "        pm.expect(jsonData[0].owner).to.have.property('id');",
-                      "        pm.expect(jsonData[0].owner).to.have.property('email');",
-                      "        pm.expect(jsonData[0].owner).to.have.property('full_name');",
-                      "        pm.expect(jsonData[0]).to.have.property('created_at');",
-                      "        pm.expect(jsonData[0]).to.have.property('documents');",
-                      "        pm.expect(jsonData[0]).to.have.property('images');",
-                      "    }",
+                      "    pm.expect(jsonData.message).to.equal('Image uploaded successfully. The image will be displayed once processed.');",
+                      "    pm.expect(jsonData.status).to.equal('processing');",
                       "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/property/unverified/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "unverified", ""]
-                },
-                "description": "Get list of unverified properties (requires land commission rep or admin permissions)"
-              }
-            },
-            {
-              "name": "Verify Property as Land Commission Rep",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 200\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has success message and verification status\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
-                      "    pm.expect(jsonData.verification_status).to.equal('approved');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/verify/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "verify", ""]
-                },
-                "description": "Verify a property as a land commission representative"
-              }
-            },
-            {
-              "name": "Reject Property as Land Commission Rep",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 200\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has success message and required fields\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.equal('Property rejected successfully');",
-                      "    pm.expect(jsonData).to.have.property('rejection_reason');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"reason\": \"Incomplete documentation\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/reject/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "reject", ""]
-                },
-                "description": "Reject a property as a land commission representative"
-              }
-            },
-            {
-              "name": "Verify Property with Invalid Status",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 400\", function () {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has error message about invalid status\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.equal('verification_status must be either approved or rejected');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"invalid_status\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/verify/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "verify", ""]
-                },
-                "description": "Attempt to verify property with invalid status"
-              }
-            },
-            {
-              "name": "Verify Property with Missing Fields",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 400\", function () {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has error message about missing fields\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('user_property_id and verification_status are required');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/verify/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "verify", ""]
-                },
-                "description": "Attempt to verify property with missing required fields"
-              }
-            },
-            {
-              "name": "Verify Property as Property Owner",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 403\", function () {",
-                      "    pm.response.to.have.status(403);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has permission error message\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{owner_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/verify/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "verify", ""]
-                },
-                "description": "Attempt to verify property as a property owner (should fail)"
-              }
-            },
-            {
-              "name": "Verify Non-Existent Property",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 404\", function () {",
-                      "    pm.response.to.have.status(404);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has error message about property not found\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('Property not found');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"999999\",\n    \"verification_status\": \"approved\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/verify/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "verify", ""]
-                },
-                "description": "Attempt to verify a non-existent property"
-              }
-            },
-            {
-              "name": "Reject Property with Missing Reason",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 400\", function () {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has error message about missing reason\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('Rejection reason is required');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/reject/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "reject", ""]
-                },
-                "description": "Attempt to reject property without providing a reason"
-              }
-            }
-          ]
-        },
-        {
-          "name": "2.3 Property Listing",
-          "item": []
-        },
-        {
-          "name": "2.4 Property Details",
-          "item": []
-        },
-        {
-          "name": "2.5 Property Images",
-          "item": []
-        },
-        {
-          "name": "2.6 Property Documents",
-          "item": [
-            {
-              "name": "Upload Property Document",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 201\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has success message and document info\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.equal('Document uploaded successfully');",
-                      "    pm.expect(jsonData).to.have.property('document_id');",
-                      "    pm.expect(jsonData).to.have.property('file_name');",
-                      "    pm.expect(jsonData).to.have.property('upload_date');",
-                      "});",
-                      "",
-                      "// Save document ID for future tests",
-                      "const documentId = pm.response.json().document_id;",
-                      "if (documentId) {",
-                      "    pm.environment.set('document_id', documentId);",
-                      "    console.log('Document ID set:', documentId);",
-                      "}"
                     ],
                     "type": "text/javascript"
                   }
@@ -2526,44 +2141,238 @@
                   "mode": "formdata",
                   "formdata": [
                     {
-                      "key": "user_property_id",
-                      "value": "{{user_property_id}}",
+                      "key": "property_id",
+                      "value": "{{property_id}}",
                       "type": "text"
                     },
                     {
-                      "key": "document",
+                      "key": "image",
                       "type": "file",
-                      "src": "test_files/sample_deed.pdf"
-                    },
-                    {
-                      "key": "document_type",
-                      "value": "title_deed",
-                      "type": "text"
+                      "src": "test_files/property_sample.jpg"
                     }
                   ]
                 },
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "raw": "{{base_url}}/api/property/upload-image/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "upload", ""]
+                  "path": ["api", "property", "upload-image", ""]
                 },
-                "description": "Upload a property document as the property owner"
+                "description": "Upload a property image as the property owner"
               }
             },
             {
-              "name": "Upload Document as Non-Owner",
+              "name": "Upload Image with Missing Fields",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Status code is 403\", function () {",
-                      "    pm.response.to.have.status(403);",
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
                       "});",
                       "",
-                      "pm.test(\"Response has permission error message\", function () {",
+                      "pm.test(\"Response has error message about missing fields\", function () {",
                       "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('You do not have permission to upload documents for this property');",
+                      "    pm.expect(jsonData.error).to.equal('Missing required fields');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-image/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-image", ""]
+                },
+                "description": "Attempt to upload an image without providing the image file"
+              }
+            },
+            {
+              "name": "Upload Image with Invalid Type",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about invalid image type\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('Invalid image type. Only JPEG and PNG are allowed.');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "test_files/invalid_image.txt"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-image/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-image", ""]
+                },
+                "description": "Attempt to upload an image with invalid type (not JPEG/PNG)"
+              }
+            },
+            {
+              "name": "Upload Large Image",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about image size\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('Image size too large. Maximum size is 10MB.');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "test_files/large_image.jpg"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-image/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-image", ""]
+                },
+                "description": "Attempt to upload an image larger than 10MB"
+              }
+            },
+            {
+              "name": "Upload Image to Verified Property",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about verified property\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('Cannot upload images to a property that has already been verified.');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{verified_property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "test_files/property_sample.jpg"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-image/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-image", ""]
+                },
+                "description": "Attempt to upload an image to an already verified property"
+              }
+            },
+            {
+              "name": "Upload Image as Non-Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about property not found\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('Property not found or you do not have permission');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -2582,26 +2391,282 @@
                   "mode": "formdata",
                   "formdata": [
                     {
-                      "key": "user_property_id",
-                      "value": "{{user_property_id}}",
+                      "key": "property_id",
+                      "value": "{{property_id}}",
                       "type": "text"
                     },
                     {
-                      "key": "document",
+                      "key": "image",
                       "type": "file",
-                      "src": "test_files/sample_deed.pdf"
-                    },
-                    {
-                      "key": "document_type",
-                      "value": "title_deed",
-                      "type": "text"
+                      "src": "test_files/property_sample.jpg"
                     }
                   ]
                 },
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "raw": "{{base_url}}/api/property/upload-image/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "upload", ""]
+                  "path": ["api", "property", "upload-image", ""]
+                },
+                "description": "Attempt to upload an image for a property not owned by the user"
+              }
+            },
+            {
+              "name": "Upload Image with Invalid Property ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about property not found\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('Property not found or you do not have permission');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "999999",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "test_files/property_sample.jpg"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-image/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-image", ""]
+                },
+                "description": "Attempt to upload an image with an invalid property ID"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Property Documents",
+          "item": [
+            {
+              "name": "Upload Property Document",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and correct status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.include('Document uploaded successfully');",
+                      "    pm.expect(jsonData.status).to.equal('pending_review');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "attachment",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-document/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-document", ""]
+                },
+                "description": "Upload a property document as the property owner"
+              }
+            },
+            {
+              "name": "Upload Document with Invalid File Type",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about invalid file type\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Invalid file type. Only PDF documents are allowed');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "attachment",
+                      "type": "file",
+                      "src": "test_files/invalid_document.txt"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-document/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-document", ""]
+                },
+                "description": "Attempt to upload a document with an invalid file format (not PDF)"
+              }
+            },
+            {
+              "name": "Upload Document to Verified Property",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about verified property\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('Cannot upload documents to a property that has already been verified');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{verified_property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "attachment",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-document/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-document", ""]
+                },
+                "description": "Attempt to upload a document to an already verified property"
+              }
+            },
+            {
+              "name": "Upload Document as Non-Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('You do not have permission');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{seeker_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "attachment",
+                      "type": "file",
+                      "src": "test_files/sample_deed.pdf"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/upload-document/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "upload-document", ""]
                 },
                 "description": "Attempt to upload a document for a property not owned by the user"
               }
@@ -2638,32 +2703,27 @@
                   "mode": "formdata",
                   "formdata": [
                     {
-                      "key": "user_property_id",
+                      "key": "property_id",
                       "value": "999999",
                       "type": "text"
                     },
                     {
-                      "key": "document",
+                      "key": "attachment",
                       "type": "file",
                       "src": "test_files/sample_deed.pdf"
-                    },
-                    {
-                      "key": "document_type",
-                      "value": "title_deed",
-                      "type": "text"
                     }
                   ]
                 },
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "raw": "{{base_url}}/api/property/upload-document/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "upload", ""]
+                  "path": ["api", "property", "upload-document", ""]
                 },
                 "description": "Attempt to upload a document with an invalid property ID"
               }
             },
             {
-              "name": "Upload Document with Invalid Type",
+              "name": "Upload Document with Missing Fields",
               "event": [
                 {
                   "listen": "test",
@@ -2673,9 +2733,9 @@
                       "    pm.response.to.have.status(400);",
                       "});",
                       "",
-                      "pm.test(\"Response has error message about invalid document type\", function () {",
+                      "pm.test(\"Response has error message about missing fields\", function () {",
                       "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('Invalid document type');",
+                      "    pm.expect(jsonData.error).to.include('Missing required fields');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -2694,172 +2754,27 @@
                   "mode": "formdata",
                   "formdata": [
                     {
-                      "key": "user_property_id",
-                      "value": "{{user_property_id}}",
-                      "type": "text"
-                    },
-                    {
-                      "key": "document",
-                      "type": "file",
-                      "src": "test_files/sample_deed.pdf"
-                    },
-                    {
-                      "key": "document_type",
-                      "value": "invalid_type",
+                      "key": "property_id",
+                      "value": "{{property_id}}",
                       "type": "text"
                     }
                   ]
                 },
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/upload/",
+                  "raw": "{{base_url}}/api/property/upload-document/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "upload", ""]
+                  "path": ["api", "property", "upload-document", ""]
                 },
-                "description": "Attempt to upload a document with an invalid document type"
+                "description": "Attempt to upload a document without providing the file"
               }
-            },
+            }
+          ]
+        },
+        {
+          "name": "2.4 Document Access Control",
+          "item": [
             {
-              "name": "Upload Document with Invalid File Format",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 400\", function () {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has error message about invalid file format\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('Invalid file format');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{owner_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "user_property_id",
-                      "value": "{{user_property_id}}",
-                      "type": "text"
-                    },
-                    {
-                      "key": "document",
-                      "type": "file",
-                      "src": "test_files/invalid_document.txt"
-                    },
-                    {
-                      "key": "document_type",
-                      "value": "title_deed",
-                      "type": "text"
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/property/document/upload/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "upload", ""]
-                },
-                "description": "Attempt to upload a document with an invalid file format (not PDF)"
-              }
-            },
-            {
-              "name": "List Property Documents",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 200\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Response is an array of documents with required fields\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData).to.be.an('array');",
-                      "    if (jsonData.length > 0) {",
-                      "        pm.expect(jsonData[0]).to.have.property('id');",
-                      "        pm.expect(jsonData[0]).to.have.property('document_type');",
-                      "        pm.expect(jsonData[0]).to.have.property('file_name');",
-                      "        pm.expect(jsonData[0]).to.have.property('upload_date');",
-                      "        pm.expect(jsonData[0]).to.have.property('hash');",
-                      "    }",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{owner_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/property/{{user_property_id}}/documents/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "{{user_property_id}}", "documents", ""]
-                },
-                "description": "Get list of documents for a property"
-              }
-            },
-            {
-              "name": "View Document Details",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 200\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has document details\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData).to.have.property('id');",
-                      "    pm.expect(jsonData).to.have.property('document_type');",
-                      "    pm.expect(jsonData).to.have.property('file_name');",
-                      "    pm.expect(jsonData).to.have.property('upload_date');",
-                      "    pm.expect(jsonData).to.have.property('hash');",
-                      "    pm.expect(jsonData).to.have.property('blockchain_record');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{owner_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "{{document_id}}", ""]
-                },
-                "description": "Get details of a specific document"
-              }
-            },
-            {
-              "name": "Request Document Access as Seeker",
+              "name": "Request Document Access",
               "event": [
                 {
                   "listen": "test",
@@ -2880,7 +2795,6 @@
                       "const requestId = pm.response.json().request_id;",
                       "if (requestId) {",
                       "    pm.environment.set('access_request_id', requestId);",
-                      "    console.log('Access Request ID set:', requestId);",
                       "}"
                     ],
                     "type": "text/javascript"
@@ -2901,18 +2815,18 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"reason\": \"Interested in purchasing the property\"\n}"
+                  "raw": "{\n    \"property_id\": \"{{property_id}}\",\n    \"reason\": \"Interested in purchasing the property\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/request-access/",
+                  "raw": "{{base_url}}/api/document/request-access/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "request-access", ""]
+                  "path": ["api", "document", "request-access", ""]
                 },
                 "description": "Request access to property documents as a property seeker"
               }
             },
             {
-              "name": "View Document Access Requests as Owner",
+              "name": "View Document Access Requests",
               "event": [
                 {
                   "listen": "test",
@@ -2947,15 +2861,15 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/api/property/{{user_property_id}}/document-requests/",
+                  "raw": "{{base_url}}/api/document/requests/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "{{user_property_id}}", "document-requests", ""]
+                  "path": ["api", "document", "requests", ""]
                 },
                 "description": "View document access requests for a property as the owner"
               }
             },
             {
-              "name": "Approve Document Access Request",
+              "name": "Respond to Document Access Request",
               "event": [
                 {
                   "listen": "test",
@@ -2992,15 +2906,66 @@
                   "raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"status\": \"approved\",\n    \"response_note\": \"Access granted for 7 days\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/respond-to-request/",
+                  "raw": "{{base_url}}/api/document/respond/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "respond-to-request", ""]
+                  "path": ["api", "document", "respond", ""]
                 },
-                "description": "Approve a document access request as the property owner"
+                "description": "Respond to a document access request as the property owner"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Blockchain Integration",
+          "item": [
+            {
+              "name": "Register Property on Blockchain",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and block details\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Property registered on blockchain successfully');",
+                      "    pm.expect(jsonData).to.have.property('block_number');",
+                      "    pm.expect(jsonData).to.have.property('current_hash');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"property_id\": \"{{property_id}}\",\n    \"document_hash\": \"{{document_hash}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/trustchain/register/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "trustchain", "register", ""]
+                },
+                "description": "Register a verified property on the blockchain"
               }
             },
             {
-              "name": "Access Document as Seeker (After Approval)",
+              "name": "Verify Chain Integrity",
               "event": [
                 {
                   "listen": "test",
@@ -3010,13 +2975,10 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Response has document details\", function () {",
+                      "pm.test(\"Response has chain validation results\", function () {",
                       "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData).to.have.property('id');",
-                      "    pm.expect(jsonData).to.have.property('document_type');",
-                      "    pm.expect(jsonData).to.have.property('file_name');",
-                      "    pm.expect(jsonData).to.have.property('upload_date');",
-                      "    pm.expect(jsonData).to.have.property('download_url');",
+                      "    pm.expect(jsonData).to.have.property('is_valid');",
+                      "    pm.expect(jsonData).to.have.property('message');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -3028,19 +2990,19 @@
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{seeker_token}}"
+                    "value": "Bearer {{admin_token}}"
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
+                  "raw": "{{base_url}}/api/trustchain/verify-chain/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "{{document_id}}", ""]
+                  "path": ["api", "trustchain", "verify-chain", ""]
                 },
-                "description": "Access document details after request approval"
+                "description": "Verify the integrity of the entire blockchain"
               }
             },
             {
-              "name": "Delete Property Document",
+              "name": "Get Property History",
               "event": [
                 {
                   "listen": "test",
@@ -3050,9 +3012,16 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Response has success message\", function () {",
+                      "pm.test(\"Response has property history details\", function () {",
                       "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.equal('Document deleted successfully');",
+                      "    pm.expect(jsonData).to.have.property('property_id');",
+                      "    pm.expect(jsonData).to.have.property('property_title');",
+                      "    pm.expect(jsonData).to.have.property('history');",
+                      "    if (jsonData.history.length > 0) {",
+                      "        pm.expect(jsonData.history[0]).to.have.property('block_number');",
+                      "        pm.expect(jsonData.history[0]).to.have.property('owner_id');",
+                      "        pm.expect(jsonData.history[0]).to.have.property('timestamp');",
+                      "    }",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -3060,7 +3029,7 @@
                 }
               ],
               "request": {
-                "method": "DELETE",
+                "method": "GET",
                 "header": [
                   {
                     "key": "Authorization",
@@ -3068,51 +3037,15 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
+                  "raw": "{{base_url}}/api/trustchain/property-history/{{property_id}}/",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "{{document_id}}", ""]
+                  "path": ["api", "trustchain", "property-history", "{{property_id}}", ""]
                 },
-                "description": "Delete a property document as the owner"
+                "description": "Get the complete history of a property from the blockchain"
               }
             },
             {
-              "name": "Delete Document as Non-Owner",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Status code is 403\", function () {",
-                      "    pm.response.to.have.status(403);",
-                      "});",
-                      "",
-                      "pm.test(\"Response has permission error message\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('You do not have permission to delete this document');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{seeker_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/property/document/{{document_id}}/",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "property", "document", "{{document_id}}", ""]
-                },
-                "description": "Attempt to delete a property document as a non-owner"
-              }
-            },
-            {
-              "name": "Verify Document on Blockchain",
+              "name": "Verify Property Ownership",
               "event": [
                 {
                   "listen": "test",
@@ -3122,13 +3055,10 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Response has verification status and blockchain data\", function () {",
+                      "pm.test(\"Response has ownership verification results\", function () {",
                       "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData).to.have.property('is_verified');",
-                      "    pm.expect(jsonData).to.have.property('document_hash');",
-                      "    pm.expect(jsonData).to.have.property('blockchain_record');",
-                      "    pm.expect(jsonData.blockchain_record).to.have.property('transaction_hash');",
-                      "    pm.expect(jsonData.blockchain_record).to.have.property('timestamp');",
+                      "    pm.expect(jsonData).to.have.property('is_owner');",
+                      "    pm.expect(jsonData).to.have.property('message');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -3140,84 +3070,677 @@
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{landrep_token}}"
+                    "value": "Bearer {{admin_token}}"
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/api/trustchain/verify-document/{{document_id}}/",
+                  "raw": "{{base_url}}/api/trustchain/verify-ownership/?property_id={{property_id}}&owner_id={{owner_id}}",
                   "host": ["{{base_url}}"],
-                  "path": ["api", "trustchain", "verify-document", "{{document_id}}", ""]
+                  "path": ["api", "trustchain", "verify-ownership", ""],
+                  "query": [
+                    {
+                      "key": "property_id",
+                      "value": "{{property_id}}"
+                    },
+                    {
+                      "key": "owner_id",
+                      "value": "{{owner_id}}"
+                    }
+                  ]
                 },
-                "description": "Verify a property document on the blockchain"
+                "description": "Verify if a user is the current owner of a property"
               }
+            },
+            {
+              "name": "Create Ownership Verification",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has verification details\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('verification_id');",
+                      "    pm.expect(jsonData).to.have.property('status');",
+                      "    if (jsonData.verification_id) {",
+                      "        pm.environment.set('verification_id', jsonData.verification_id);",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"property_id\": \"{{property_id}}\",\n    \"owner_id\": \"{{owner_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/trustchain/verify/create/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "trustchain", "verify", "create", ""]
+                },
+                "description": "Create a new ownership verification request"
+              }
+            },
+            {
+              "name": "Execute Ownership Verification",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has verification results\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('status');",
+                      "    pm.expect(jsonData).to.have.property('result');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/execute/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "trustchain", "verify", "{{verification_id}}", "execute", ""]
+                },
+                "description": "Execute a pending ownership verification request"
+              }
+            },
+            {
+              "name": "Get Verification Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has verification status details\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('status');",
+                      "    pm.expect(jsonData).to.have.property('verification_id');",
+                      "    pm.expect(jsonData).to.have.property('created_at');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "trustchain", "verify", "{{verification_id}}", "status", ""]
+                },
+                "description": "Get the current status of an ownership verification request"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Property Listing",
+          "item": []
+        },
+        {
+          "name": "2.7 Property Details",
+          "item": []
+        },
+        {
+          "name": "3. Blockchain Integration",
+          "description": "Tests for blockchain ownership registration and verification",
+          "item": [
+            {
+              "name": "3.1 Property Registration on Blockchain",
+              "item": []
+            },
+            {
+              "name": "3.2 Ownership Verification",
+              "item": []
+            },
+            {
+              "name": "3.3 Chain Integrity",
+              "item": []
+            },
+            {
+              "name": "3.4 Property History",
+              "item": []
+            }
+          ]
+        },
+        {
+          "name": "4. Role-Based Access Control",
+          "description": "Tests for permissions and access control across different user roles",
+          "item": [
+            {
+              "name": "4.1 Admin Access",
+              "item": []
+            },
+            {
+              "name": "4.2 Land Commission Access",
+              "item": []
+            },
+            {
+              "name": "4.3 Property Owner Access",
+              "item": []
+            },
+            {
+              "name": "4.4 Property Seeker Access",
+              "item": []
+            }
+          ]
+        },
+        {
+          "name": "5. End-to-End Scenarios",
+          "description": "Complete business flows from registration to verification and listing",
+          "item": [
+            {
+              "name": "5.1 Property Owner Journey",
+              "item": []
+            },
+            {
+              "name": "5.2 Property Seeker Journey",
+              "item": []
+            },
+            {
+              "name": "5.3 Admin Verification Flow",
+              "item": []
+            },
+            {
+              "name": "5.4 Land Commission Flow",
+              "item": []
             }
           ]
         }
       ]
     },
     {
-      "name": "3. Blockchain Integration",
-      "description": "Tests for blockchain ownership registration and verification",
+      "name": "2.3 Property Verification",
       "item": [
         {
-          "name": "3.1 Property Registration on Blockchain",
-          "item": []
+          "name": "Get Unverified Properties",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array of properties with required fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "    if (jsonData.length > 0) {",
+                  "        pm.expect(jsonData[0]).to.have.property('id');",
+                  "        pm.expect(jsonData[0]).to.have.property('title');",
+                  "        pm.expect(jsonData[0]).to.have.property('description');",
+                  "        pm.expect(jsonData[0]).to.have.property('location');",
+                  "        pm.expect(jsonData[0]).to.have.property('owner');",
+                  "        pm.expect(jsonData[0].owner).to.have.property('id');",
+                  "        pm.expect(jsonData[0].owner).to.have.property('email');",
+                  "        pm.expect(jsonData[0].owner).to.have.property('full_name');",
+                  "        pm.expect(jsonData[0]).to.have.property('created_at');",
+                  "        pm.expect(jsonData[0]).to.have.property('documents');",
+                  "        pm.expect(jsonData[0]).to.have.property('images');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/property/unverified/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "unverified", ""]
+            },
+            "description": "Get list of unverified properties (requires land commission rep or admin permissions)"
+          }
         },
         {
-          "name": "3.2 Ownership Verification",
-          "item": []
+          "name": "Verify Property as Land Commission Rep",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success message and verification status\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
+                  "    pm.expect(jsonData.verification_status).to.equal('approved');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Verify a property as a land commission representative"
+          }
         },
         {
-          "name": "3.3 Chain Integrity",
-          "item": []
+          "name": "Reject Property as Land Commission Rep",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success message and rejection reason\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.equal('Property rejected successfully.');",
+                  "    pm.expect(jsonData).to.have.property('rejection_reason');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"rejection_reason\": \"Incomplete documentation\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/reject/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "reject", ""]
+            },
+            "description": "Reject a property as a land commission representative"
+          }
         },
         {
-          "name": "3.4 Property History",
-          "item": []
-        }
-      ]
-    },
-    {
-      "name": "4. Role-Based Access Control",
-      "description": "Tests for permissions and access control across different user roles",
-      "item": [
-        {
-          "name": "4.1 Admin Access",
-          "item": []
+          "name": "Verify Property with Invalid Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about invalid status\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('verification_status must be either approved or rejected');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"invalid_status\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Attempt to verify property with invalid status"
+          }
         },
         {
-          "name": "4.2 Land Commission Access",
-          "item": []
+          "name": "Verify Property with Missing Fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about missing fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('user_property_id and verification_status are required');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Attempt to verify property with missing required fields"
+          }
         },
         {
-          "name": "4.3 Property Owner Access",
-          "item": []
+          "name": "Verify Property without Documents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about missing documents\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('Property cannot be approved without at least one document uploaded.');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{property_without_docs_id}}\",\n    \"verification_status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Attempt to verify a property that has no documents uploaded"
+          }
         },
         {
-          "name": "4.4 Property Seeker Access",
-          "item": []
-        }
-      ]
-    },
-    {
-      "name": "5. End-to-End Scenarios",
-      "description": "Complete business flows from registration to verification and listing",
-      "item": [
-        {
-          "name": "5.1 Property Owner Journey",
-          "item": []
+          "name": "Verify Property without Images",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about missing images\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('Property cannot be approved without at least one image uploaded.');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{property_without_images_id}}\",\n    \"verification_status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Attempt to verify a property that has no images uploaded"
+          }
         },
         {
-          "name": "5.2 Property Seeker Journey",
-          "item": []
+          "name": "Verify Property as Property Owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has permission error message\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{owner_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Attempt to verify property as a property owner (should fail)"
+          }
         },
         {
-          "name": "5.3 Admin Verification Flow",
-          "item": []
+          "name": "Verify Non-Existent Property",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about property not found\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('Property not found');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"999999\",\n    \"verification_status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "verify", ""]
+            },
+            "description": "Attempt to verify a non-existent property"
+          }
         },
         {
-          "name": "5.4 Land Commission Flow",
-          "item": []
+          "name": "Reject Property with Missing Reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has error message about missing reason\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.equal('user_property_id and rejection_reason are required');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{landrep_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/property/reject/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "property", "reject", ""]
+            },
+            "description": "Attempt to reject property without providing a reason"
+          }
         }
       ]
     }
