@@ -31,20 +31,30 @@ class UserPermission(Enum):
     VERIFY_PROPERTY = 'verify_property'
     REJECT_PROPERTY = 'reject_property'
 
+    # Property listing permissions
+    CREATE_PROPERTY_LISTING = 'create_property_listing'
+    UPDATE_PROPERTY_LISTING = 'update_property_listing'
+    DEACTIVATE_PROPERTY_LISTING = 'deactivate_property_listing'
+    REACTIVATE_PROPERTY_LISTING = 'reactivate_property_listing'
+    VIEW_ALL_LISTINGS = 'view_all_listings'
+
 # Define which permissions each role has
 ROLE_PERMISSIONS = {
     UserRole.PROPERTY_OWNER.value: [
-        UserPermission.REGISTER_ACCOUNT.value,
         UserPermission.VIEW_OWN_PROFILE.value,
         UserPermission.UPDATE_OWN_PROFILE.value,
         UserPermission.CREATE_PROPERTY.value,
         UserPermission.UPLOAD_PROPERTY_DOCUMENT.value,
         UserPermission.UPLOAD_PROPERTY_IMAGE.value,
+        UserPermission.CREATE_PROPERTY_LISTING.value,
+        UserPermission.UPDATE_PROPERTY_LISTING.value,
+        UserPermission.DEACTIVATE_PROPERTY_LISTING.value,
+        UserPermission.REACTIVATE_PROPERTY_LISTING.value,
     ],
     UserRole.PROPERTY_SEEKER.value: [
-        UserPermission.REGISTER_ACCOUNT.value,
         UserPermission.VIEW_OWN_PROFILE.value,
         UserPermission.UPDATE_OWN_PROFILE.value,
+        UserPermission.VIEW_ALL_LISTINGS.value,
     ],
     UserRole.LAND_REP.value: [
         UserPermission.VIEW_OWN_PROFILE.value,
@@ -52,20 +62,19 @@ ROLE_PERMISSIONS = {
         UserPermission.VIEW_UNVERIFIED_PROPERTIES.value,
         UserPermission.VERIFY_PROPERTY.value,
         UserPermission.REJECT_PROPERTY.value,
+        UserPermission.VIEW_ALL_LISTINGS.value,
     ],
     UserRole.SYS_ADMIN.value: [
+        UserPermission.VIEW_OWN_PROFILE.value,
+        UserPermission.UPDATE_OWN_PROFILE.value,
         UserPermission.CREATE_ADMIN_ACCOUNT.value,
         UserPermission.VERIFY_USERS.value,
         UserPermission.VIEW_UNVERIFIED_USERS.value,
-        UserPermission.VIEW_OWN_PROFILE.value,
-        UserPermission.UPDATE_OWN_PROFILE.value,
-        UserPermission.CREATE_PROPERTY.value,
-        UserPermission.UPLOAD_PROPERTY_DOCUMENT.value,
-        UserPermission.UPLOAD_PROPERTY_IMAGE.value,
         UserPermission.VIEW_UNVERIFIED_PROPERTIES.value,
         UserPermission.VERIFY_PROPERTY.value,
         UserPermission.REJECT_PROPERTY.value,
-    ]
+        UserPermission.VIEW_ALL_LISTINGS.value,
+    ],
 }
 
 # Define which roles can be registered through which endpoints
@@ -181,11 +190,11 @@ class IsAuthenticatedWithPermission(BasePermission):
         allowed_permissions = ROLE_PERMISSIONS.get(user_role, [])
         return self.required_permission in allowed_permissions
 
-def has_permission(required_permission):
+def get_permission_class(required_permission):
     """
-    Decorator for function-based views to check if user has required permission.
-    For registration endpoint, no authentication is required.
-    For all other endpoints, user must be authenticated and have the required permission.
+    Returns the appropriate permission class based on the required permission.
+    For registration endpoint, returns HasUserPermission.
+    For all other endpoints, returns IsAuthenticatedWithPermission.
     """
     if required_permission == UserPermission.REGISTER_ACCOUNT.value:
         return HasUserPermission(required_permission)

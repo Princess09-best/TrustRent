@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.core.files.storage import default_storage
 from django.contrib.auth.hashers import make_password, check_password
 import hashlib
+import secrets
+import datetime
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -46,6 +48,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True)
     password = models.CharField(max_length=128, null=True)  # Make password nullable initially
+    
+    # MFA fields
+    mfa_enabled = models.BooleanField(default=False)
+    mfa_method = models.CharField(max_length=10, choices=[('email', 'Email'), ('sms', 'SMS')], null=True, blank=True)
+    otp_secret = models.CharField(max_length=100, null=True, blank=True)
+    otp_created_at = models.DateTimeField(null=True, blank=True)
+    otp_valid_until = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 
@@ -81,6 +90,34 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
+
+    def generate_otp(self):
+        """Generate a 6-digit OTP and store it securely"""
+        otp = ''.join(secrets.choice('0123456789') for _ in range(6))
+        self.otp_secret = make_password(otp)  # Store hashed OTP
+        self.otp_created_at = timezone.now()
+        self.otp_valid_until = timezone.now() + datetime.timedelta(minutes=10)  # OTP valid for 10 minutes
+        self.save(update_fields=['otp_secret', 'otp_created_at', 'otp_valid_until'])
+        return otp
+
+    def verify_otp(self, provided_otp):
+        """Verify the provided OTP against stored secret"""
+        if not self.otp_secret or not self.otp_valid_until:
+            return False
+        
+        # Check if OTP is expired
+        if timezone.now() > self.otp_valid_until:
+            return False
+        
+        # Check if OTP matches
+        return check_password(provided_otp, self.otp_secret)
+    
+    def clear_otp(self):
+        """Clear OTP after successful verification or expiry"""
+        self.otp_secret = None
+        self.otp_created_at = None
+        self.otp_valid_until = None
+        self.save(update_fields=['otp_secret', 'otp_created_at', 'otp_valid_until'])
 
     def save(self, *args, **kwargs):
         if self.pk is None:  # New user

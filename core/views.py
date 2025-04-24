@@ -30,6 +30,7 @@ from .permissions import (
     HasUserPermission,
     ROLE_PERMISSIONS
 )
+from .utils import send_otp_via_email, send_otp_via_sms
 
 # Global variable for role permissions
 ROLE_PERMISSIONS = ROLE_PERMISSIONS
@@ -124,7 +125,7 @@ def register_user(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-# Logging in a user
+# Modified login function to handle MFA
 @csrf_exempt
 def login_user(request):
     if request.method != 'POST':
@@ -134,6 +135,7 @@ def login_user(request):
         data = json.loads(request.body)
         email = data.get('email')
         password = data.get('password')
+        otp = data.get('otp')  # Optional OTP for 2FA
 
         if not email or not password:
             return JsonResponse({'error': 'Email and password required'}, status=400)
@@ -149,6 +151,40 @@ def login_user(request):
                     'error': 'Account pending verification',
                     'status': 'pending'
                 }, status=403)
+
+            # Check if MFA is enabled for this user
+            if user.mfa_enabled:
+                # If OTP is provided, verify it
+                if otp:
+                    if not user.verify_otp(otp):
+                        return JsonResponse({
+                            'error': 'Invalid or expired OTP',
+                            'mfa_required': True
+                        }, status=401)
+                    
+                    # OTP verified, clear it
+                    user.clear_otp()
+                else:
+                    # No OTP provided, but MFA is required
+                    # Generate and send a new OTP
+                    new_otp = user.generate_otp()
+                    
+                    # Send OTP via the user's preferred method
+                    if user.mfa_method == 'email':
+                        success, message = send_otp_via_email(user.email, new_otp, user.firstname)
+                    elif user.mfa_method == 'sms':
+                        success, message = send_otp_via_sms(user.phone_number, new_otp, user.firstname)
+                    else:
+                        success, message = False, "MFA method not configured"
+                    
+                    if not success:
+                        return JsonResponse({'error': message}, status=500)
+                    
+                    return JsonResponse({
+                        'message': 'OTP sent for verification',
+                        'mfa_required': True,
+                        'mfa_method': user.mfa_method
+                    }, status=200)
 
             # Generate JWT token
             refresh = RefreshToken.for_user(user)
@@ -244,7 +280,7 @@ def create_property(request):
         print(f"Is authenticated: {request.user.is_authenticated}")
         print(f"Is superuser: {getattr(request.user, 'is_superuser', False)}")
         
-        # Explicitly check permission again
+        # Check permission using the string value
         if UserPermission.CREATE_PROPERTY.value not in ROLE_PERMISSIONS.get(request.user.role, []):
             print("Permission denied - user does not have CREATE_PROPERTY permission")
             return Response(
@@ -1063,5 +1099,98 @@ def create_admin_account(request):
     
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# Add new endpoints for MFA management
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def enable_mfa(request):
+    """
+    Enable MFA for the authenticated user
+    """
+    try:
+        data = json.loads(request.body)
+        mfa_method = data.get('mfa_method')
+        
+        if not mfa_method or mfa_method not in ['email', 'sms']:
+            return JsonResponse({
+                'error': 'Invalid MFA method. Choose either "email" or "sms"'
+            }, status=400)
+        
+        user = request.user
+        
+        # Generate an OTP for verification
+        otp = user.generate_otp()
+        
+        # Send OTP via the selected method
+        if mfa_method == 'email':
+            success, message = send_otp_via_email(user.email, otp, user.firstname)
+        else:  # sms
+            success, message = send_otp_via_sms(user.phone_number, otp, user.firstname)
+        
+        if not success:
+            return JsonResponse({'error': message}, status=500)
+        
+        # Update user's MFA preference but don't enable until verified
+        user.mfa_method = mfa_method
+        user.save(update_fields=['mfa_method'])
+        
+        return JsonResponse({
+            'message': f'OTP sent to your {mfa_method}. Verify to enable MFA.',
+            'mfa_method': mfa_method
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_mfa_setup(request):
+    """
+    Verify OTP to complete MFA setup
+    """
+    try:
+        data = json.loads(request.body)
+        otp = data.get('otp')
+        
+        if not otp:
+            return JsonResponse({'error': 'OTP is required'}, status=400)
+        
+        user = request.user
+        
+        if not user.verify_otp(otp):
+            return JsonResponse({'error': 'Invalid or expired OTP'}, status=401)
+        
+        # OTP is valid, enable MFA
+        user.mfa_enabled = True
+        user.clear_otp()  # Clear the OTP after successful verification
+        user.save(update_fields=['mfa_enabled'])
+        
+        return JsonResponse({'message': 'MFA enabled successfully'})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def disable_mfa(request):
+    """
+    Disable MFA for the authenticated user
+    """
+    try:
+        user = request.user
+        
+        if not user.mfa_enabled:
+            return JsonResponse({'error': 'MFA is not enabled'}, status=400)
+        
+        # Disable MFA
+        user.mfa_enabled = False
+        user.mfa_method = None
+        user.save(update_fields=['mfa_enabled', 'mfa_method'])
+        
+        return JsonResponse({'message': 'MFA disabled successfully'})
+        
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

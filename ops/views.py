@@ -4,12 +4,15 @@ from django.http import JsonResponse
 from django.db import connections
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from core.permissions import UserPermission
+from ops.permissions import has_property_permission
 import json
 
 from .models import PropertyListing
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@has_property_permission(UserPermission.CREATE_PROPERTY_LISTING)
 def create_property_listing(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST requests allowed'}, status=405)
@@ -201,6 +204,7 @@ def get_properties(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@has_property_permission(UserPermission.DEACTIVATE_PROPERTY_LISTING)
 def deactivate_property_listing(request, listing_id):
     """Deactivate a property listing"""
     try:
@@ -232,6 +236,7 @@ def deactivate_property_listing(request, listing_id):
 
 @csrf_exempt
 @require_http_methods(["GET", "PATCH"])
+@has_property_permission(UserPermission.UPDATE_PROPERTY_LISTING)
 def update_property_listing(request, listing_id):
     """Get or update a property listing"""
     if request.method == "GET":
@@ -320,6 +325,7 @@ def update_property_listing(request, listing_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@has_property_permission(UserPermission.VIEW_ALL_LISTINGS)
 def get_all_listings(request):
     """Get all active property listings with optional filters"""
     try:
@@ -496,6 +502,7 @@ def get_all_listings(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@has_property_permission(UserPermission.REACTIVATE_PROPERTY_LISTING)
 def reactivate_property_listing(request, listing_id):
     """Reactivate a deactivated property listing"""
     try:

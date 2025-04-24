@@ -3218,75 +3218,704 @@
         },
         {
           "name": "2.6 Property Listing",
-          "item": []
-        },
-        {
-          "name": "2.7 Property Details",
-          "item": []
-        },
-        {
-          "name": "3. Blockchain Integration",
-          "description": "Tests for blockchain ownership registration and verification",
           "item": [
             {
-              "name": "3.1 Property Registration on Blockchain",
-              "item": []
+              "name": "Create Property Listing",
+              "item": [
+                {
+                  "name": "Create listing with valid data",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"user_property_id\": \"{{property_id}}\",\n    \"listing_type\": \"rent\",\n    \"price\": 1500.00\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/listing/create/",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "listing", "create", ""]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"user_property_id\": \"{{property_id}}\",\n    \"listing_type\": \"rent\",\n    \"price\": 1500.00\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/listing/create/",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "listing", "create", ""]
+                        }
+                      },
+                      "status": "Created",
+                      "code": 201,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "X-Listing-Id",
+                          "value": "{{listing_id}}"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"message\": \"Property listing created successfully\",\n    \"property_title\": \"{{property_title}}\",\n    \"listing_type\": \"rent\",\n    \"price\": 1500.00\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Create listing with missing fields",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"user_property_id\": \"{{property_id}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/listing/create/",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "listing", "create", ""]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Error Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"user_property_id\": \"{{property_id}}\"\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/listing/create/",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "listing", "create", ""]
+                        }
+                      },
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"error\": \"Missing required fields\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Create listing with invalid price",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"user_property_id\": \"{{property_id}}\",\n    \"listing_type\": \"rent\",\n    \"price\": \"invalid\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", ""]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Error Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"user_property_id\": \"{{property_id}}\",\n    \"listing_type\": \"rent\",\n    \"price\": \"invalid\"\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/listing/create/",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "listing", "create", ""]
+                        }
+                      },
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"error\": \"Invalid price value\"\n}"
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "name": "3.2 Ownership Verification",
-              "item": []
+              "name": "Get Properties",
+              "item": [
+                {
+                  "name": "Get properties with filters",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/properties?location=Nairobi&type=apartment&min_price=1000&max_price=2000&listing_type=rent&search=modern&sort_by=price&sort_order=asc&page=1&per_page=10",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "properties"],
+                      "query": [
+                        {
+                          "key": "location",
+                          "value": "Nairobi"
+                        },
+                        {
+                          "key": "type",
+                          "value": "apartment"
+                        },
+                        {
+                          "key": "min_price",
+                          "value": "1000"
+                        },
+                        {
+                          "key": "max_price",
+                          "value": "2000"
+                        },
+                        {
+                          "key": "listing_type",
+                          "value": "rent"
+                        },
+                        {
+                          "key": "search",
+                          "value": "modern"
+                        },
+                        {
+                          "key": "sort_by",
+                          "value": "price"
+                        },
+                        {
+                          "key": "sort_order",
+                          "value": "asc"
+                        },
+                        {
+                          "key": "page",
+                          "value": "1"
+                        },
+                        {
+                          "key": "per_page",
+                          "value": "10"
+                        }
+                      ]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/properties?location=Nairobi&type=apartment&min_price=1000&max_price=2000&listing_type=rent&search=modern&sort_by=price&sort_order=asc&page=1&per_page=10",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "properties"],
+                          "query": []
+                        }
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"properties\": [\n        {\n            \"id\": \"{{property_id}}\",\n            \"title\": \"{{property_title}}\",\n            \"property_type\": \"apartment\",\n            \"description\": \"{{property_description}}\",\n            \"location\": \"Nairobi\",\n            \"status\": \"available\",\n            \"created_at\": \"{{timestamp}}\",\n            \"firstname\": \"{{owner_firstname}}\",\n            \"lastname\": \"{{owner_lastname}}\",\n            \"email\": \"{{owner_email}}\",\n            \"phone_number\": \"{{owner_phone}}\",\n            \"listing_id\": \"{{listing_id}}\",\n            \"listing_type\": \"rent\",\n            \"price\": 1500.00,\n            \"listing_status\": true,\n            \"listing_created_at\": \"{{timestamp}}\",\n            \"property_image\": \"{{image_url}}\",\n            \"images\": [\n                {\n                    \"image\": \"{{image_url}}\",\n                    \"uploaded_at\": \"{{timestamp}}\"\n                }\n            ]\n        }\n    ],\n    \"pagination\": {\n        \"total\": 1,\n        \"page\": 1,\n        \"per_page\": 10,\n        \"total_pages\": 1\n    }\n}"
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "name": "3.3 Chain Integrity",
-              "item": []
+              "name": "Deactivate Property Listing",
+              "item": [
+                {
+                  "name": "Deactivate existing listing",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}/deactivate",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "{{listing_id}}", "deactivate"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}/deactivate",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "{{listing_id}}", "deactivate"]
+                        }
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"message\": \"Property listing deactivated successfully\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Deactivate non-existent listing",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/invalid_id/deactivate",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "invalid_id", "deactivate"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Error Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/invalid_id/deactivate",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "invalid_id", "deactivate"]
+                        }
+                      },
+                      "status": "Not Found",
+                      "code": 404,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"error\": \"Active listing not found\"\n}"
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "name": "3.4 Property History",
-              "item": []
-            }
-          ]
-        },
-        {
-          "name": "4. Role-Based Access Control",
-          "description": "Tests for permissions and access control across different user roles",
-          "item": [
-            {
-              "name": "4.1 Admin Access",
-              "item": []
+              "name": "Update Property Listing",
+              "item": [
+                {
+                  "name": "Get listing details",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "{{listing_id}}"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "{{listing_id}}"]
+                        }
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"price\": 1500.00,\n    \"listing_type\": \"rent\",\n    \"property\": {\n        \"title\": \"{{property_title}}\",\n        \"type\": \"apartment\",\n        \"description\": \"{{property_description}}\",\n        \"location\": \"Nairobi\"\n    }\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Update listing price",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"price\": 2000.00\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "{{listing_id}}"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"price\": 2000.00\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "{{listing_id}}"]
+                        }
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"message\": \"Listing updated successfully\",\n    \"price\": 2000.00\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Update non-existent listing",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"price\": 2000.00\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/invalid_id",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "invalid_id"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Error Response",
+                      "originalRequest": {
+                        "method": "PATCH",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"price\": 2000.00\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/invalid_id",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "invalid_id"]
+                        }
+                      },
+                      "status": "Not Found",
+                      "code": 404,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"error\": \"Active listing not found\"\n}"
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "name": "4.2 Land Commission Access",
-              "item": []
+              "name": "Get All Listings",
+              "item": [
+                {
+                  "name": "Get all listings with filters",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/all?location=Nairobi&type=apartment&min_price=1000&max_price=2000&listing_type=rent&search=modern&sort_by=price&sort_order=asc&page=1&per_page=10",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "all"],
+                      "query": [
+                        {
+                          "key": "location",
+                          "value": "Nairobi"
+                        },
+                        {
+                          "key": "type",
+                          "value": "apartment"
+                        },
+                        {
+                          "key": "min_price",
+                          "value": "1000"
+                        },
+                        {
+                          "key": "max_price",
+                          "value": "2000"
+                        },
+                        {
+                          "key": "listing_type",
+                          "value": "rent"
+                        },
+                        {
+                          "key": "search",
+                          "value": "modern"
+                        },
+                        {
+                          "key": "sort_by",
+                          "value": "price"
+                        },
+                        {
+                          "key": "sort_order",
+                          "value": "asc"
+                        },
+                        {
+                          "key": "page",
+                          "value": "1"
+                        },
+                        {
+                          "key": "per_page",
+                          "value": "10"
+                        }
+                      ]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/all?location=Nairobi&type=apartment&min_price=1000&max_price=2000&listing_type=rent&search=modern&sort_by=price&sort_order=asc&page=1&per_page=10",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "all"],
+                          "query": []
+                        }
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"listings\": [\n        {\n            \"id\": \"{{listing_id}}\",\n            \"price\": 1500.00,\n            \"listing_type\": \"rent\",\n            \"created_at\": \"{{timestamp}}\",\n            \"title\": \"{{property_title}}\",\n            \"property_type\": \"apartment\",\n            \"description\": \"{{property_description}}\",\n            \"location\": \"Nairobi\",\n            \"owner\": {\n                \"name\": \"{{owner_name}}\",\n                \"phone\": \"{{owner_phone}}\"\n            },\n            \"main_image\": \"{{image_url}}\"\n        }\n    ],\n    \"pagination\": {\n        \"total\": 1,\n        \"page\": 1,\n        \"per_page\": 10,\n        \"total_pages\": 1\n    },\n    \"filters\": {\n        \"location\": \"Nairobi\",\n        \"property_type\": \"apartment\",\n        \"price_range\": {\n            \"min\": \"1000\",\n            \"max\": \"2000\"\n        },\n        \"listing_type\": \"rent\",\n        \"search\": \"modern\"\n    }\n}"
+                    }
+                  ]
+                }
+              ]
             },
             {
-              "name": "4.3 Property Owner Access",
-              "item": []
-            },
-            {
-              "name": "4.4 Property Seeker Access",
-              "item": []
-            }
-          ]
-        },
-        {
-          "name": "5. End-to-End Scenarios",
-          "description": "Complete business flows from registration to verification and listing",
-          "item": [
-            {
-              "name": "5.1 Property Owner Journey",
-              "item": []
-            },
-            {
-              "name": "5.2 Property Seeker Journey",
-              "item": []
-            },
-            {
-              "name": "5.3 Admin Verification Flow",
-              "item": []
-            },
-            {
-              "name": "5.4 Land Commission Flow",
-              "item": []
+              "name": "Reactivate Property Listing",
+              "item": [
+                {
+                  "name": "Reactivate listing with reason",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"reactivation_reason\": \"Updated property details and ready for listing\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}/reactivate",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "{{listing_id}}", "reactivate"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Success Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"reactivation_reason\": \"Updated property details and ready for listing\"\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}/reactivate",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "{{listing_id}}", "reactivate"]
+                        }
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"message\": \"Property listing reactivated successfully\",\n    \"is_active\": true,\n    \"listing_id\": \"{{listing_id}}\",\n    \"price\": 1500.00,\n    \"listing_type\": \"rent\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Reactivate listing without reason",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}/reactivate",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "{{listing_id}}", "reactivate"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Error Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/{{listing_id}}/reactivate",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "{{listing_id}}", "reactivate"]
+                        }
+                      },
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"error\": \"Reactivation reason is required\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Reactivate non-existent listing",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"reactivation_reason\": \"Updated property details and ready for listing\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/ops/property-listing/invalid_id/reactivate",
+                      "host": ["{{base_url}}"],
+                      "path": ["api", "ops", "property-listing", "invalid_id", "reactivate"]
+                    }
+                  },
+                  "response": [
+                    {
+                      "name": "Error Response",
+                      "originalRequest": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n    \"reactivation_reason\": \"Updated property details and ready for listing\"\n}"
+                        },
+                        "url": {
+                          "raw": "{{base_url}}/api/ops/property-listing/invalid_id/reactivate",
+                          "host": ["{{base_url}}"],
+                          "path": ["api", "ops", "property-listing", "invalid_id", "reactivate"]
+                        }
+                      },
+                      "status": "Not Found",
+                      "code": 404,
+                      "_postman_previewlanguage": "json",
+                      "header": [],
+                      "cookie": [],
+                      "body": "{\n    \"error\": \"Inactive listing not found\"\n}"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }
@@ -3294,234 +3923,234 @@
     },
     {
       "name": "2.3 Property Verification",
-      "item": [
-        {
-          "name": "Get Unverified Properties",
-          "event": [
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Response is an array of properties with required fields\", function () {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.be.an('array');",
-                  "    if (jsonData.length > 0) {",
-                  "        pm.expect(jsonData[0]).to.have.property('id');",
-                  "        pm.expect(jsonData[0]).to.have.property('title');",
-                  "        pm.expect(jsonData[0]).to.have.property('description');",
-                  "        pm.expect(jsonData[0]).to.have.property('location');",
-                  "        pm.expect(jsonData[0]).to.have.property('owner');",
-                  "        pm.expect(jsonData[0].owner).to.have.property('id');",
-                  "        pm.expect(jsonData[0].owner).to.have.property('email');",
-                  "        pm.expect(jsonData[0].owner).to.have.property('full_name');",
-                  "        pm.expect(jsonData[0]).to.have.property('created_at');",
-                  "        pm.expect(jsonData[0]).to.have.property('documents');",
-                  "        pm.expect(jsonData[0]).to.have.property('images');",
-                  "    }",
-                  "});"
+              "name": "Get Unverified Properties",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is an array of properties with required fields\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.be.an('array');",
+                      "    if (jsonData.length > 0) {",
+                      "        pm.expect(jsonData[0]).to.have.property('id');",
+                      "        pm.expect(jsonData[0]).to.have.property('title');",
+                      "        pm.expect(jsonData[0]).to.have.property('description');",
+                      "        pm.expect(jsonData[0]).to.have.property('location');",
+                      "        pm.expect(jsonData[0]).to.have.property('owner');",
+                      "        pm.expect(jsonData[0].owner).to.have.property('id');",
+                      "        pm.expect(jsonData[0].owner).to.have.property('email');",
+                      "        pm.expect(jsonData[0].owner).to.have.property('full_name');",
+                      "        pm.expect(jsonData[0]).to.have.property('created_at');",
+                      "        pm.expect(jsonData[0]).to.have.property('documents');",
+                      "        pm.expect(jsonData[0]).to.have.property('images');",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "url": {
+                  "raw": "{{base_url}}/api/property/unverified/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "unverified", ""]
+                },
+                "description": "Get list of unverified properties (requires land commission rep or admin permissions)"
               }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/property/unverified/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "unverified", ""]
             },
-            "description": "Get list of unverified properties (requires land commission rep or admin permissions)"
-          }
-        },
-        {
-          "name": "Verify Property as Land Commission Rep",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has success message and verification status\", function () {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
-                  "    pm.expect(jsonData.verification_status).to.equal('approved');",
-                  "});"
+              "name": "Verify Property as Land Commission Rep",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has success message and verification status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message).to.equal('Property ownership verification approved successfully.');",
+                      "    pm.expect(jsonData.verification_status).to.equal('approved');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Verify a property as a land commission representative"
               }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
             },
-            "url": {
-              "raw": "{{base_url}}/api/property/verify/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "verify", ""]
-            },
-            "description": "Verify a property as a land commission representative"
-          }
-        },
-        {
-          "name": "Reject Property as Land Commission Rep",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
+              "name": "Reject Property as Land Commission Rep",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
                   "pm.test(\"Response has success message and rejection reason\", function () {",
-                  "    var jsonData = pm.response.json();",
+                      "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.message).to.equal('Property rejected successfully.');",
-                  "    pm.expect(jsonData).to.have.property('rejection_reason');",
-                  "});"
+                      "    pm.expect(jsonData).to.have.property('rejection_reason');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
+                "body": {
+                  "mode": "raw",
               "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"rejection_reason\": \"Incomplete documentation\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/reject/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "reject", ""]
+                },
+                "description": "Reject a property as a land commission representative"
+              }
             },
-            "url": {
-              "raw": "{{base_url}}/api/property/reject/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "reject", ""]
-            },
-            "description": "Reject a property as a land commission representative"
-          }
-        },
-        {
-          "name": "Verify Property with Invalid Status",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 400\", function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has error message about invalid status\", function () {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.error).to.equal('verification_status must be either approved or rejected');",
-                  "});"
+              "name": "Verify Property with Invalid Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about invalid status\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.equal('verification_status must be either approved or rejected');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"invalid_status\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify property with invalid status"
               }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"invalid_status\"\n}"
             },
-            "url": {
-              "raw": "{{base_url}}/api/property/verify/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "verify", ""]
-            },
-            "description": "Attempt to verify property with invalid status"
-          }
-        },
-        {
-          "name": "Verify Property with Missing Fields",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 400\", function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has error message about missing fields\", function () {",
-                  "    var jsonData = pm.response.json();",
+              "name": "Verify Property with Missing Fields",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about missing fields\", function () {",
+                      "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.error).to.equal('user_property_id and verification_status are required');",
-                  "});"
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify property with missing required fields"
               }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
             },
-            "url": {
-              "raw": "{{base_url}}/api/property/verify/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "verify", ""]
-            },
-            "description": "Attempt to verify property with missing required fields"
-          }
-        },
         {
           "name": "Verify Property without Documents",
           "event": [
@@ -3608,139 +4237,139 @@
               "path": ["api", "property", "verify", ""]
             },
             "description": "Attempt to verify a property that has no images uploaded"
-          }
-        },
-        {
-          "name": "Verify Property as Property Owner",
-          "event": [
+              }
+            },
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 403\", function () {",
-                  "    pm.response.to.have.status(403);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has permission error message\", function () {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.error).to.include('insufficient permissions');",
-                  "});"
+              "name": "Verify Property as Property Owner",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 403\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has permission error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.include('insufficient permissions');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{owner_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify property as a property owner (should fail)"
               }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{owner_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
             },
-            "url": {
-              "raw": "{{base_url}}/api/property/verify/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "verify", ""]
-            },
-            "description": "Attempt to verify property as a property owner (should fail)"
-          }
-        },
-        {
-          "name": "Verify Non-Existent Property",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 404\", function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has error message about property not found\", function () {",
-                  "    var jsonData = pm.response.json();",
+              "name": "Verify Non-Existent Property",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 404\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about property not found\", function () {",
+                      "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.error).to.equal('Property not found');",
-                  "});"
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"999999\",\n    \"verification_status\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/verify/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "verify", ""]
+                },
+                "description": "Attempt to verify a non-existent property"
               }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"user_property_id\": \"999999\",\n    \"verification_status\": \"approved\"\n}"
             },
-            "url": {
-              "raw": "{{base_url}}/api/property/verify/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "verify", ""]
-            },
-            "description": "Attempt to verify a non-existent property"
-          }
-        },
-        {
-          "name": "Reject Property with Missing Reason",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 400\", function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has error message about missing reason\", function () {",
-                  "    var jsonData = pm.response.json();",
+              "name": "Reject Property with Missing Reason",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 400\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Response has error message about missing reason\", function () {",
+                      "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.error).to.equal('user_property_id and rejection_reason are required');",
-                  "});"
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{landrep_token}}"
+                  }
                 ],
-                "type": "text/javascript"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/property/reject/",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "property", "reject", ""]
+                },
+                "description": "Attempt to reject property without providing a reason"
               }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{landrep_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"user_property_id\": \"{{user_property_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/property/reject/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "property", "reject", ""]
-            },
-            "description": "Attempt to reject property without providing a reason"
-          }
         }
       ]
     }

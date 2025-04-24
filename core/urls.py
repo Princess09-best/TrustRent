@@ -15,7 +15,11 @@ from .views import (
     request_document_access,
     respond_to_document_request,
     get_document_requests,
-    create_admin_account
+    create_admin_account,
+    # New MFA endpoints
+    enable_mfa,
+    verify_mfa_setup,
+    disable_mfa
 )
 
 urlpatterns = [
@@ -25,6 +29,11 @@ urlpatterns = [
     path('user/unverified/', get_unverified_users, name='get_unverified_users'),
     path('user/verify/', verify_user, name='verify_user'),
     path('admin/create-account/', create_admin_account, name='create_admin_account'),
+    
+    # MFA endpoints
+    path('user/mfa/enable/', enable_mfa, name='enable_mfa'),
+    path('user/mfa/verify/', verify_mfa_setup, name='verify_mfa_setup'),
+    path('user/mfa/disable/', disable_mfa, name='disable_mfa'),
     
     # Property endpoints - specific routes first
     path('property/create/', create_property, name='create_property'),

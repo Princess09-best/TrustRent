@@ -210,4 +210,50 @@ import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Email settings for OTP delivery
+# For development/testing, use the console backend:
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'TrustRent <no-reply@trustrent.com>'
+
+# SMS API Configuration (replace with your chosen provider)
+# For development, use 'console' to just log messages
+SMS_PROVIDER = 'console'  
+# For production, uncomment and configure with your provider:
+# SMS_PROVIDER = 'twilio'  # Options: 'twilio', 'vonage', 'africastalking'
+# SMS_API_KEY = 'your-api-key'
+# SMS_API_SECRET = 'your-api-secret'
+# SMS_FROM_NUMBER = '+1234567890'  # Your SMS sender number
+
+# Logging configuration for MFA operations
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'mfa.log',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'core.utils': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
 
