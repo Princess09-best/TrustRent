@@ -14,15 +14,25 @@ def has_property_permission(required_permission):
             if not request.user or not request.user.is_authenticated:
                 return JsonResponse({'error': 'Authentication required'}, status=401)
             
-            # Check permission
-            user_role = request.user.role
-            # Convert string role to UserRole enum if needed
-            role_enum = UserRole(user_role) if isinstance(user_role, str) else user_role
-            allowed_permissions = ROLE_PERMISSIONS.get(role_enum, [])
+            # Convert required_permission to string value if it's an enum
+            perm_value = required_permission.value if hasattr(required_permission, 'value') else required_permission
             
-            if required_permission not in allowed_permissions:
+            # Get user role and permissions
+            user_role = request.user.role
+            allowed_permissions = ROLE_PERMISSIONS.get(user_role, [])
+            
+            # Debug logging
+            print("\n=== Property Listing Permission Check ===")
+            print(f"User: {request.user}")
+            print(f"User role: {user_role}")
+            print(f"Required permission: {perm_value}")
+            print(f"Allowed permissions: {allowed_permissions}")
+            
+            if perm_value not in allowed_permissions:
+                print(f"Permission denied: {perm_value} not in {allowed_permissions}")
                 return JsonResponse({'error': 'Permission denied'}, status=403)
-                
+            
+            print("Permission granted!")    
             return view_func(request, *args, **kwargs)
         return _wrapped_view
     return decorator 

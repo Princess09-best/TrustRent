@@ -6,14 +6,24 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from core.permissions import UserPermission
 from ops.permissions import has_property_permission
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 import json
 
 from .models import PropertyListing
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 @has_property_permission(UserPermission.CREATE_PROPERTY_LISTING)
 def create_property_listing(request):
+    print("\n=== Property Listing Creation Debug ===")
+    print(f"User: {request.user}")
+    print(f"User authenticated: {request.user.is_authenticated}")
+    print(f"User role: {request.user.role}")
+    print(f"Request method: {request.method}")
+    print(f"Authorization header: {request.headers.get('Authorization')}")
+
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST requests allowed'}, status=405)
 
