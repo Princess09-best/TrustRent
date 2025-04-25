@@ -330,7 +330,7 @@
 										"user",
 										"register",
 										""
-									]
+										]
 								},
 								"description": "Test registration validation with weak password"
 							},
@@ -5409,10 +5409,16 @@
 											"",
 											"pm.test(\"Response has verification details\", function () {",
 											"    var jsonData = pm.response.json();",
-											"    pm.expect(jsonData).to.have.property('verification_id');",
-											"    pm.expect(jsonData).to.have.property('status');",
-											"    if (jsonData.verification_id) {",
-											"        pm.environment.set('verification_id', jsonData.verification_id);",
+											"    pm.expect(jsonData.message).to.equal('Ownership verification request created successfully');",
+											"    pm.expect(jsonData).to.have.property('verification');",
+											"    pm.expect(jsonData.verification).to.have.property('verification_id');",
+											"    pm.expect(jsonData.verification).to.have.property('status');",
+											"    pm.expect(jsonData.verification).to.have.property('property');",
+											"    pm.expect(jsonData.verification).to.have.property('claimed_owner');",
+											"",
+											"    // Save verification_id for subsequent tests",
+											"    if (jsonData.verification.verification_id) {",
+											"        pm.environment.set('verification_id', jsonData.verification.verification_id);",
 											"    }",
 											"});"
 										],
@@ -5425,7 +5431,7 @@
 								"header": [
 									{
 										"key": "Authorization",
-										"value": "Bearer {{owner_token}}"
+										"value": "Bearer {{seeker_token}}"
 									},
 									{
 										"key": "Content-Type",
@@ -5434,7 +5440,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"property_id\": \"{{property_id}}\",\n    \"owner_id\": \"{{owner_id}}\"\n}"
+									"raw": "{\n    \"property_title\": \"{{property_title}}\",\n    \"property_location\": \"{{property_location}}\",\n    \"property_type\": \"{{property_type}}\",\n    \"owner_name\": \"{{owner_name}}\",\n    \"owner_id_type\": \"Ghana Card\",\n    \"owner_id_value\": \"{{owner_id_value}}\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/api/trustchain/verify/create/",
@@ -5449,7 +5455,7 @@
 										""
 									]
 								},
-								"description": "Create a new ownership verification request"
+								"description": "Create a new ownership verification request with user-friendly details"
 							},
 							"response": []
 						},
@@ -5502,51 +5508,197 @@
 						},
 						{
 							"name": "Get Verification Status",
-							"event": [
+							"item": [
 								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response has verification status details\", function () {",
-											"    var jsonData = pm.response.json();",
-											"    pm.expect(jsonData).to.have.property('status');",
-											"    pm.expect(jsonData).to.have.property('verification_id');",
-											"    pm.expect(jsonData).to.have.property('created_at');",
-											"});"
+									"name": "Get Status of Valid Verification",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Response has verification details\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData).to.have.property('verification_id');",
+													"    pm.expect(jsonData).to.have.property('status');",
+													"    pm.expect(jsonData).to.have.property('created_at');",
+													"    pm.expect(jsonData).to.have.property('property');",
+													"    pm.expect(jsonData.property).to.have.property('title');",
+													"    pm.expect(jsonData.property).to.have.property('location');",
+													"    pm.expect(jsonData.property).to.have.property('type');",
+													"    pm.expect(jsonData).to.have.property('claimed_owner');",
+													"    pm.expect(jsonData.claimed_owner).to.have.property('name');",
+													"    pm.expect(jsonData.claimed_owner).to.have.property('id_type');",
+													"    pm.expect(jsonData.claimed_owner).to.have.property('id_value');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{seeker_token}}"
+											}
 										],
-										"type": "text/javascript"
-									}
+										"url": {
+											"raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"trustchain",
+												"verify",
+												"{{verification_id}}",
+												"status",
+												""
+											]
+										},
+										"description": "Get status of a valid verification request with all details"
+									},
+									"response": []
+								},
+								{
+									"name": "Get Status of Non-existent Verification",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 404\", function () {",
+													"    pm.response.to.have.status(404);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('Verification request not found');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{seeker_token}}"
+											}
+										],
+										"url": {
+											"raw": "{{base_url}}/api/trustchain/verify/999999/status/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"trustchain",
+												"verify",
+												"999999",
+												"status",
+												""
+											]
+										},
+										"description": "Attempt to get status of a non-existent verification request"
+									},
+									"response": []
+								},
+								{
+									"name": "Get Status Without Auth",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function () {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"pm.test(\"Response has authentication error\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.include('Authentication credentials were not provided');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"url": {
+											"raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"trustchain",
+												"verify",
+												"{{verification_id}}",
+												"status",
+												""
+											]
+										},
+										"description": "Attempt to get verification status without authentication"
+									},
+									"response": []
+								},
+								{
+									"name": "Get Status of Another User's Verification",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 403\", function () {",
+													"    pm.response.to.have.status(403);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('You do not have permission to view this verification request');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{other_seeker_token}}"
+											}
+										],
+										"url": {
+											"raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"trustchain",
+												"verify",
+												"{{verification_id}}",
+												"status",
+												""
+											]
+										},
+										"description": "Attempt to get status of another user's verification request"
+									},
+									"response": []
 								}
 							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{owner_token}}"
-									}
-								],
-								"url": {
-									"raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"trustchain",
-										"verify",
-										"{{verification_id}}",
-										"status",
-										""
-									]
-								},
-								"description": "Get the current status of an ownership verification request"
-							},
-							"response": []
+							"description": "Tests for checking verification request status"
 						}
 					]
 				},

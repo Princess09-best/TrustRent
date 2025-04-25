@@ -2,6 +2,7 @@ from django.utils import timezone
 import uuid
 from datetime import timedelta
 from .models import Block, PropertyLedger, SmartContract
+from django.db import connections
 
 class SmartContractService:
     """Service class for managing property ownership verification through smart contracts"""
@@ -169,16 +170,53 @@ class SmartContractService:
         try:
             contract = SmartContract.objects.get(contract_id=verification_id)
             
+            # Get property details from core database
+            with connections['core'].cursor() as cursor:
+                # Get property details
+                cursor.execute("""
+                    SELECT p.title, p.location, p.property_type
+                    FROM core_property p
+                    WHERE p.id = %s
+                """, [contract.property_id])
+                property_result = cursor.fetchone()
+                
+                if not property_result:
+                    return False, "Property details not found"
+                
+                property_title, property_location, property_type = property_result
+                
+                # Get claimed owner details
+                cursor.execute("""
+                    SELECT CONCAT(u.firstname, ' ', u.lastname), u.id_type, u.id_value
+                    FROM core_user u
+                    WHERE u.id = %s
+                """, [contract.owner_id])
+                owner_result = cursor.fetchone()
+                
+                if not owner_result:
+                    return False, "Owner details not found"
+                
+                owner_name, id_type, id_value = owner_result
+
             return True, {
                 'verification_id': contract.contract_id,
-                'property_id': contract.property_id,
-                'claimed_owner_id': contract.owner_id,
-                'requester_id': contract.requester_id,
                 'status': contract.status,
                 'created_at': contract.created_at.isoformat(),
                 'expires_at': contract.expiry_date.isoformat(),
-                'verification_data': contract.verification_data,
-                'execution_result': contract.execution_result
+                'property': {
+                    'title': property_title,
+                    'location': property_location,
+                    'type': property_type
+                },
+                'claimed_owner': {
+                    'name': owner_name,
+                    'id_type': id_type,
+                    'id_value': id_value
+                },
+                'verification_data': {
+                    'is_owner': contract.verification_data.get('is_owner', None),
+                    'verified_at': contract.verification_data.get('verified_at', None)
+                }
             }
         except SmartContract.DoesNotExist:
             return False, "Verification request not found"
