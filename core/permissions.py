@@ -62,7 +62,6 @@ ROLE_PERMISSIONS = {
         UserPermission.VIEW_UNVERIFIED_PROPERTIES.value,
         UserPermission.VERIFY_PROPERTY.value,
         UserPermission.REJECT_PROPERTY.value,
-        UserPermission.VIEW_ALL_LISTINGS.value,
     ],
     UserRole.SYS_ADMIN.value: [
         UserPermission.VIEW_OWN_PROFILE.value,
@@ -73,7 +72,6 @@ ROLE_PERMISSIONS = {
         UserPermission.VIEW_UNVERIFIED_PROPERTIES.value,
         UserPermission.VERIFY_PROPERTY.value,
         UserPermission.REJECT_PROPERTY.value,
-        UserPermission.VIEW_ALL_LISTINGS.value,
     ],
 }
 

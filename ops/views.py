@@ -107,145 +107,160 @@ def create_property_listing(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-@require_http_methods(["GET"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@has_property_permission(UserPermission.VIEW_ALL_LISTINGS)
 def get_properties(request):
     """Get a list of verified properties with optional filters"""
     try:
+        # Check if user is a property seeker
+        if request.user.role != 'property_seeker':
+            return JsonResponse({'error': 'Only property seekers can view properties'}, status=403)
+
         # Get filter parameters
         location = request.GET.get('location')
         property_type = request.GET.get('type')
         min_price = request.GET.get('min_price')
         max_price = request.GET.get('max_price')
-        listing_type = request.GET.get('listing_type')  # rent or sale
-        search = request.GET.get('search')  # search in title and description
-        sort_by = request.GET.get('sort_by', 'created_at')  # default sort by creation date
-        sort_order = request.GET.get('sort_order', 'desc')  # default descending order
-        page = int(request.GET.get('page', 1))  # default page 1
-        per_page = int(request.GET.get('per_page', 10))  # default 10 items per page
-        
-        # Base query with all required visibility rules
-        query = """
-            SELECT 
-                p.id, p.title, p.property_type, p.description, 
-                p.location, p.status, p.created_at,
-                u.firstname, u.lastname, u.email, u.phone_number,
-                pl.id as listing_id, pl.listing_type, pl.price, pl.is_active as listing_status,
-                pl.created_at as listing_created_at,
-                pi.image as property_image
-            FROM core_property p
-            JOIN core_userproperty up ON p.id = up.property_id
-            JOIN core_user u ON up.owner_id = u.id
-            JOIN ops_propertylisting pl ON up.id = pl.user_property_id
-            LEFT JOIN core_propertyimage pi ON p.id = pi.property_id AND pi.is_active = true
-            WHERE 
-                up.is_verified = true 
+        listing_type = request.GET.get('listing_type')
+        search = request.GET.get('search')
+        sort_by = request.GET.get('sort_by', 'created_at')
+        sort_order = request.GET.get('sort_order', 'desc')
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 10))
+
+        # First, get verified properties from core database
+        with connections['core'].cursor() as cursor:
+            property_query = """
+                SELECT 
+                    p.id as property_id,
+                    p.title,
+                    p.property_type,
+                    p.description,
+                    p.location,
+                    p.status,
+                    up.id as user_property_id,
+                    u.firstname,
+                    u.lastname,
+                    u.email,
+                    u.phone_number
+                FROM core_property p
+                JOIN core_userproperty up ON p.id = up.property_id
+                JOIN core_user u ON up.owner_id = u.id
+                WHERE up.is_verified = true 
                 AND up.is_active = true
                 AND p.status = 'available'
-                AND pl.is_active = true
-        """
-        params = []
-        
-        # Add filters
-        if location:
-            query += " AND LOWER(p.location) LIKE LOWER(%s)"
-            params.append(f"%{location}%")
-        if property_type:
-            query += " AND p.property_type = %s"
-            params.append(property_type)
-        if min_price:
-            query += " AND pl.price >= %s"
-            params.append(float(min_price))
-        if max_price:
-            query += " AND pl.price <= %s"
-            params.append(float(max_price))
-        if listing_type:
-            query += " AND pl.listing_type = %s"
-            params.append(listing_type)
-        if search:
-            query += " AND (LOWER(p.title) LIKE LOWER(%s) OR LOWER(p.description) LIKE LOWER(%s))"
-            params.extend([f"%{search}%", f"%{search}%"])
-            
-        # Add sorting
-        valid_sort_fields = ['price', 'created_at', 'listing_created_at']
-        if sort_by in valid_sort_fields:
-            query += f" ORDER BY {sort_by} {sort_order.upper()}"
-            
-        # Add pagination
-        offset = (page - 1) * per_page
-        query += " LIMIT %s OFFSET %s"
-        params.extend([per_page, offset])
-            
-        # Execute query
-        with connections['core'].cursor() as cursor:
-            # Get total count for pagination
-            count_query = query.replace("SELECT p.id, p.title", "SELECT COUNT(*)")
-            count_query = count_query.split("ORDER BY")[0]  # Remove ORDER BY clause
-            cursor.execute(count_query, params[:-2])  # Exclude LIMIT and OFFSET params
-            total_count = cursor.fetchone()[0]
-            
-            # Get paginated results
-            cursor.execute(query, params)
-            columns = [col[0] for col in cursor.description]
-            properties = [dict(zip(columns, row)) for row in cursor.fetchall()]
-            
-            # Get all images for each property
-            for property in properties:
+            """
+            params = []
+
+            if location:
+                property_query += " AND LOWER(p.location) LIKE LOWER(%s)"
+                params.append(f"%{location}%")
+            if property_type:
+                property_query += " AND p.property_type = %s"
+                params.append(property_type)
+            if search:
+                property_query += " AND (LOWER(p.title) LIKE LOWER(%s) OR LOWER(p.description) LIKE LOWER(%s))"
+                params.extend([f"%{search}%", f"%{search}%"])
+
+            cursor.execute(property_query, params)
+            properties = [dict(zip([col[0] for col in cursor.description], row)) 
+                         for row in cursor.fetchall()]
+
+            # Get images for properties
+            for prop in properties:
                 cursor.execute("""
                     SELECT image, uploaded_at
                     FROM core_propertyimage
                     WHERE property_id = %s AND is_active = true
                     ORDER BY uploaded_at DESC
-                """, [property['id']])
-                property['images'] = [dict(zip(['image', 'uploaded_at'], row)) 
-                                    for row in cursor.fetchall()]
-            
+                """, [prop['property_id']])
+                prop['images'] = [dict(zip(['image', 'uploaded_at'], row)) 
+                                for row in cursor.fetchall()]
+
+        # Then, get listings from ops database
+        with connections['ops'].cursor() as cursor:
+            listing_query = """
+                SELECT 
+                    id,
+                    user_property_id,
+                    listing_type,
+                    price,
+                    is_active,
+                    created_at
+                FROM ops_propertylisting
+                WHERE is_active = true
+            """
+            params = []
+
+            if listing_type:
+                listing_query += " AND listing_type = %s"
+                params.append(listing_type)
+            if min_price:
+                listing_query += " AND price >= %s"
+                params.append(float(min_price))
+            if max_price:
+                listing_query += " AND price <= %s"
+                params.append(float(max_price))
+
+            cursor.execute(listing_query, params)
+            listings = [dict(zip([col[0] for col in cursor.description], row)) 
+                       for row in cursor.fetchall()]
+
+        # Join the data in Python
+        listing_map = {str(l['user_property_id']): l for l in listings}
+        combined_results = []
+        
+        for prop in properties:
+            listing = listing_map.get(str(prop['user_property_id']))
+            if listing:  # Only include properties that have active listings
+                combined_results.append({
+                    'id': listing['id'],
+                    'price': float(listing['price']),
+                    'listing_type': listing['listing_type'],
+                    'created_at': listing['created_at'].isoformat() if listing['created_at'] else None,
+                    'title': prop['title'],
+                    'property_type': prop['property_type'],
+                    'description': prop['description'],
+                    'location': prop['location'],
+                    'owner': {
+                        'name': f"{prop['firstname']} {prop['lastname']}",
+                        'email': prop['email'],
+                        'phone': prop['phone_number']
+                    },
+                    'images': prop['images']
+                })
+
+        # Sort results
+        if sort_by == 'price':
+            combined_results.sort(key=lambda x: x['price'], 
+                               reverse=(sort_order.lower() == 'desc'))
+        elif sort_by == 'created_at':
+            combined_results.sort(key=lambda x: x['created_at'], 
+                               reverse=(sort_order.lower() == 'desc'))
+
+        # Apply pagination
+        total_count = len(combined_results)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_results = combined_results[start_idx:end_idx]
+
         return JsonResponse({
-            'properties': properties,
+            'properties': paginated_results,
             'pagination': {
                 'total': total_count,
                 'page': page,
                 'per_page': per_page,
                 'total_pages': (total_count + per_page - 1) // per_page
             }
-        }, safe=False)
-        
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-@has_property_permission(UserPermission.DEACTIVATE_PROPERTY_LISTING)
-def deactivate_property_listing(request, listing_id):
-    """Deactivate a property listing"""
-    try:
-        # Check if listing exists and is active
-        with connections['ops'].cursor() as cursor:
-            cursor.execute("""
-                SELECT user_property_id 
-                FROM ops_propertylisting 
-                WHERE id = %s AND is_active = true
-            """, [listing_id])
-            
-            result = cursor.fetchone()
-            if not result:
-                return JsonResponse({'error': 'Active listing not found'}, status=404)
-
-            # Deactivate the listing
-            cursor.execute("""
-                UPDATE ops_propertylisting 
-                SET is_active = false 
-                WHERE id = %s
-            """, [listing_id])
-
-        return JsonResponse({
-            'message': 'Property listing deactivated successfully'
         })
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-@require_http_methods(["GET", "PATCH"])
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
 @has_property_permission(UserPermission.UPDATE_PROPERTY_LISTING)
 def update_property_listing(request, listing_id):
     """Get or update a property listing"""
@@ -334,11 +349,16 @@ def update_property_listing(request, listing_id):
             return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-@require_http_methods(["GET"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 @has_property_permission(UserPermission.VIEW_ALL_LISTINGS)
 def get_all_listings(request):
     """Get all active property listings with optional filters"""
     try:
+        # Check if user is a property seeker
+        if request.user.role != 'property_seeker':
+            return JsonResponse({'error': 'Only property seekers can view all listings'}, status=403)
+
         # Get filter parameters
         location = request.GET.get('location')
         property_type = request.GET.get('type')
@@ -511,17 +531,45 @@ def get_all_listings(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@has_property_permission(UserPermission.DEACTIVATE_PROPERTY_LISTING)
+def deactivate_property_listing(request, listing_id):
+    """Deactivate a property listing"""
+    try:
+        # Check if listing exists and is active
+        with connections['ops'].cursor() as cursor:
+            cursor.execute("""
+                SELECT user_property_id 
+                FROM ops_propertylisting 
+                WHERE id = %s AND is_active = true
+            """, [listing_id])
+            
+            result = cursor.fetchone()
+            if not result:
+                return JsonResponse({'error': 'Active listing not found'}, status=404)
+
+            # Deactivate the listing
+            cursor.execute("""
+                UPDATE ops_propertylisting 
+                SET is_active = false 
+                WHERE id = %s
+            """, [listing_id])
+
+        return JsonResponse({
+            'message': 'Property listing deactivated successfully'
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 @has_property_permission(UserPermission.REACTIVATE_PROPERTY_LISTING)
 def reactivate_property_listing(request, listing_id):
     """Reactivate a deactivated property listing"""
     try:
-        data = json.loads(request.body)
-        reactivation_reason = data.get('reactivation_reason')
-
-        if not reactivation_reason:
-            return JsonResponse({'error': 'Reactivation reason is required'}, status=400)
-
         # Check if listing exists and is inactive
         with connections['ops'].cursor() as cursor:
             cursor.execute("""
@@ -567,7 +615,168 @@ def reactivate_property_listing(request, listing_id):
             else:
                 return JsonResponse({'error': 'Failed to reactivate listing'}, status=500)
 
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON in request body'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_owner_listings(request):
+    """Get all listings (active and inactive) for the authenticated property owner"""
+    try:
+        # Check if user is a property owner
+        if request.user.role != 'property_owner':
+            return JsonResponse({'error': 'Only property owners can view their listings'}, status=403)
+
+        # Get filter parameters
+        status = request.GET.get('status')  # 'active' or 'inactive'
+        sort_by = request.GET.get('sort_by', 'created_at')
+        sort_order = request.GET.get('sort_order', 'desc')
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 10))
+
+        # First, get user_property_ids from core database
+        with connections['core'].cursor() as cursor:
+            cursor.execute("""
+                SELECT id 
+                FROM core_userproperty 
+                WHERE owner_id = %s
+            """, [request.user.id])
+            user_property_ids = [row[0] for row in cursor.fetchall()]
+
+        if not user_property_ids:
+            return JsonResponse({
+                'listings': [],
+                'pagination': {
+                    'total': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
+                }
+            })
+
+        # Then, get listings from ops database
+        with connections['ops'].cursor() as cursor:
+            listing_query = """
+                SELECT 
+                    id,
+                    user_property_id,
+                    price,
+                    listing_type,
+                    is_active,
+                    created_at
+                FROM ops_propertylisting
+                WHERE user_property_id = ANY(%s)
+            """
+            params = [user_property_ids]
+
+            # Add status filter if specified
+            if status == 'active':
+                listing_query += " AND is_active = true"
+            elif status == 'inactive':
+                listing_query += " AND is_active = false"
+
+            # Add sorting
+            valid_sort_fields = {
+                'price': 'price',
+                'created_at': 'created_at'
+            }
+            sort_field = valid_sort_fields.get(sort_by, 'created_at')
+            listing_query += f" ORDER BY {sort_field} {sort_order.upper()}"
+
+            # Get total count first
+            count_query = listing_query.split("ORDER BY")[0]
+            cursor.execute(count_query, params)
+            total_count = len(cursor.fetchall())
+
+            # Add pagination
+            listing_query += " LIMIT %s OFFSET %s"
+            offset = (page - 1) * per_page
+            params.extend([per_page, offset])
+
+            # Execute main query
+            cursor.execute(listing_query, params)
+            listings = [dict(zip([col[0] for col in cursor.description], row)) 
+                       for row in cursor.fetchall()]
+
+        # If no listings found, return empty response
+        if not listings:
+            return JsonResponse({
+                'listings': [],
+                'pagination': {
+                    'total': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
+                }
+            })
+
+        # Get property details from core database
+        with connections['core'].cursor() as cursor:
+            property_query = """
+                SELECT 
+                    up.id as user_property_id,
+                    p.title,
+                    p.property_type,
+                    p.description,
+                    p.location,
+                    p.status as property_status,
+                    p.id as property_id
+                FROM core_userproperty up
+                JOIN core_property p ON up.property_id = p.id
+                WHERE up.id = ANY(%s)
+            """
+            cursor.execute(property_query, [user_property_ids])
+            property_details = {
+                str(row[0]): dict(zip(['user_property_id', 'title', 'property_type', 
+                                     'description', 'location', 'property_status',
+                                     'property_id'], row))
+                for row in cursor.fetchall()
+            }
+
+            # Get images for each property
+            for prop_details in property_details.values():
+                cursor.execute("""
+                    SELECT image, uploaded_at
+                    FROM core_propertyimage
+                    WHERE property_id = %s AND is_active = true
+                    ORDER BY uploaded_at DESC
+                """, [prop_details['property_id']])
+                prop_details['images'] = [
+                    dict(zip(['image', 'uploaded_at'], row))
+                    for row in cursor.fetchall()
+                ]
+
+        # Combine the results
+        combined_listings = []
+        for listing in listings:
+            user_property_id = str(listing['user_property_id'])
+            if user_property_id in property_details:
+                property_info = property_details[user_property_id]
+                combined_listing = {
+                    'id': listing['id'],
+                    'price': float(listing['price']),
+                    'listing_type': listing['listing_type'],
+                    'is_active': listing['is_active'],
+                    'created_at': listing['created_at'].isoformat() if listing['created_at'] else None,
+                    'title': property_info['title'],
+                    'property_type': property_info['property_type'],
+                    'description': property_info['description'],
+                    'location': property_info['location'],
+                    'property_status': property_info['property_status'],
+                    'images': property_info.get('images', [])
+                }
+                combined_listings.append(combined_listing)
+
+        return JsonResponse({
+            'listings': combined_listings,
+            'pagination': {
+                'total': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_count + per_page - 1) // per_page
+            }
+        })
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
