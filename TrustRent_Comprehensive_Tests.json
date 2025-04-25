@@ -4812,6 +4812,378 @@
 								"description": "Respond to a document access request as the property owner"
 							},
 							"response": []
+						},
+						{
+							"name": "Respond to Document Request",
+							"item": [
+								{
+									"name": "Approve Document Access Request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Response has success message and requester email\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.message).to.equal('Document access request approved');",
+													"    pm.expect(jsonData).to.have.property('requester_email');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{owner_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"decision\": \"approved\",\n    \"response_note\": \"Access granted for 7 days\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Approve a document access request as the property owner"
+									},
+									"response": []
+								},
+								{
+									"name": "Deny Document Access Request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Response has success message and requester email\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.message).to.equal('Document access request denied');",
+													"    pm.expect(jsonData).to.have.property('requester_email');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{owner_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"decision\": \"denied\",\n    \"response_note\": \"Request denied due to incomplete information\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Deny a document access request as the property owner"
+									},
+									"response": []
+								},
+								{
+									"name": "Respond as Property Seeker",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 403\", function () {",
+													"    pm.response.to.have.status(403);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('Only property owners can respond to document requests');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{seeker_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"decision\": \"approved\",\n    \"response_note\": \"Attempt to approve request\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Attempt to respond to a document request as a property seeker (should fail)"
+									},
+									"response": []
+								},
+								{
+									"name": "Respond with Invalid Decision",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 400\", function () {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('Invalid decision. Must be either \"approved\" or \"denied\"');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{owner_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"decision\": \"maybe\",\n    \"response_note\": \"Invalid decision value\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Attempt to respond with an invalid decision value"
+									},
+									"response": []
+								},
+								{
+									"name": "Respond to Non-existent Request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 404\", function () {",
+													"    pm.response.to.have.status(404);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('Request not found');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{owner_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"999999\",\n    \"decision\": \"approved\",\n    \"response_note\": \"Response to non-existent request\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Attempt to respond to a non-existent document request"
+									},
+									"response": []
+								},
+								{
+									"name": "Respond to Already Processed Request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 400\", function () {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('This request has already been processed');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{owner_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"{{processed_request_id}}\",\n    \"decision\": \"approved\",\n    \"response_note\": \"Attempt to respond to processed request\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Attempt to respond to an already processed document request"
+									},
+									"response": []
+								},
+								{
+									"name": "Respond to Another Owner's Request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 403\", function () {",
+													"    pm.response.to.have.status(403);",
+													"});",
+													"",
+													"pm.test(\"Response has correct error message\", function () {",
+													"    var jsonData = pm.response.json();",
+													"    pm.expect(jsonData.error).to.equal('You do not have permission to respond to this request');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{other_owner_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"request_id\": \"{{access_request_id}}\",\n    \"decision\": \"approved\",\n    \"response_note\": \"Attempt to respond to another owner's request\"\n}"
+										},
+										"url": {
+											"raw": "{{base_url}}/api/document/respond/",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"document",
+												"respond",
+												""
+											]
+										},
+										"description": "Attempt to respond to another property owner's document request"
+									},
+									"response": []
+								}
+							],
+							"description": "Tests for responding to document access requests"
 						}
 					]
 				},
@@ -6185,6 +6557,328 @@
 				}
 			],
 			"description": "Tests for property creation, verification, and management"
+		},
+		{
+			"name": "2.7 Property Details",
+			"item": [
+				{
+					"name": "Get Property Details as Seeker",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has all required property details\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('title');",
+									"    pm.expect(jsonData).to.have.property('property_type');",
+									"    pm.expect(jsonData).to.have.property('description');",
+									"    pm.expect(jsonData).to.have.property('location');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"    pm.expect(jsonData).to.have.property('owner');",
+									"    pm.expect(jsonData.owner).to.have.property('name');",
+									"    pm.expect(jsonData.owner).to.have.property('phone');",
+									"    pm.expect(jsonData).to.have.property('images');",
+									"    if (jsonData.listing_id) {",
+									"        pm.expect(jsonData).to.have.property('listing_type');",
+									"        pm.expect(jsonData).to.have.property('price');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{seeker_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{property_id}}",
+								""
+							]
+						},
+						"description": "Get detailed information about a property as a property seeker"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Property Details as Property Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test(\"Response has correct error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.equal('Only property seekers can view property details');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{owner_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{property_id}}",
+								""
+							]
+						},
+						"description": "Attempt to get property details as a property owner (should fail)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Property Details as Land Rep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test(\"Response has correct error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.equal('Only property seekers can view property details');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{landrep_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{property_id}}",
+								""
+							]
+						},
+						"description": "Attempt to get property details as a land commission representative (should fail)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Property Details Without Auth",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response has authentication error\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.include('Authentication credentials were not provided');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{property_id}}",
+								""
+							]
+						},
+						"description": "Attempt to get property details without authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Non-existent Property Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response has correct error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.equal('Property not found or not available');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{seeker_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/999999/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"999999",
+								""
+							]
+						},
+						"description": "Attempt to get details of a non-existent property"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unverified Property Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response has correct error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.equal('Property not found or not available');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{seeker_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{unverified_property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{unverified_property_id}}",
+								""
+							]
+						},
+						"description": "Attempt to get details of an unverified property"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unavailable Property Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response has correct error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.equal('Property not found or not available');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{seeker_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{unavailable_property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{unavailable_property_id}}",
+								""
+							]
+						},
+						"description": "Attempt to get details of a property marked as unavailable"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for property details functionality"
 		}
 	],
 	"event": [

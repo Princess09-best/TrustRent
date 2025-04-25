@@ -753,10 +753,15 @@ def get_all_properties(request):
 @permission_classes([IsAuthenticated])
 def get_property_detail(request, property_id):
     try:
+        # Check if user is a property seeker
+        if request.user.role != 'property_seeker':
+            return Response({'error': 'Only property seekers can view property details'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+
         property_data = {}
         
         # First get property details from core database
-        with connection.cursor() as cursor:
+        with connections['core'].cursor() as cursor:
             cursor.execute("""
                 SELECT 
                     p.id, p.title, p.property_type, p.description, 
@@ -775,7 +780,8 @@ def get_property_detail(request, property_id):
             
             result = cursor.fetchone()
             if not result:
-                return Response({'error': 'Property not found or not available'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'error': 'Property not found or not available'}, 
+                              status=status.HTTP_404_NOT_FOUND)
             
             columns = ['id', 'title', 'property_type', 'description', 'location', 'status', 
                       'owner_firstname', 'owner_lastname', 'owner_phone', 'user_property_id']
@@ -799,7 +805,7 @@ def get_property_detail(request, property_id):
             property_data['images'] = [row[0] for row in cursor.fetchall()]
 
         # Then get listing details from ops database
-        with connection.cursor() as cursor:
+        with connections['ops'].cursor() as cursor:
             cursor.execute("""
                 SELECT id, listing_type, price
                 FROM ops_propertylisting 
@@ -822,6 +828,11 @@ def get_property_detail(request, property_id):
 @permission_classes([IsAuthenticated])
 def request_document_access(request):
     try:
+        # Check if user is a property seeker
+        if request.user.role != 'property_seeker':
+            return Response({'error': 'Only property seekers can request document access'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
         data = json.loads(request.body)
         property_id = data.get('property_id')
         reason = data.get('reason')
@@ -903,6 +914,11 @@ def request_document_access(request):
 @permission_classes([IsAuthenticated])
 def respond_to_document_request(request):
     try:
+
+        # Check if user is a property owner
+        if request.user.role != 'property_owner':
+            return Response({'error': 'Only property owners can respond to document requests'}, 
+                          status=status.HTTP_403_FORBIDDEN) 
         data = json.loads(request.body)
         request_id = data.get('request_id')
         decision = data.get('decision')
