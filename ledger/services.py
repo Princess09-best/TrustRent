@@ -61,7 +61,8 @@ class SmartContractService:
             trigger_conditions = {
                 'new_owner_id': new_owner_id,
                 'document_required': require_document,
-                'required_events': ['document_uploaded'] if require_document else []
+                'required_events': ['document_uploaded'] if require_document else [],
+                'auto_execute': not require_document  # Add auto_execute flag when no document required
             }
             
             contract = SmartContract.objects.create(

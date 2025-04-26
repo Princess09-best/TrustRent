@@ -1,0 +1,923 @@
+{
+	"info": {
+		"_postman_id": "f53d2a61-e98c-4b66-8e50-b3d2e9c66fd7",
+		"name": "TrustRent Property Transfer Tests",
+		"description": "Tests for the property ownership transfer functionality in the TrustRent platform",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Setup Test Users and Property",
+			"item": [
+				{
+					"name": "Register Original Owner",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const timestamp = new Date().getTime();",
+									"const email = `original_owner_${timestamp}@example.com`;",
+									"pm.environment.set('original_owner_email', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const userId = pm.response.headers.get('X-User-Id');",
+									"if (userId) {",
+									"    pm.environment.set('original_owner_id', userId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Original\",\n    \"lastname\": \"Owner\",\n    \"email\": \"{{original_owner_email}}\",\n    \"phone_number\": \"+233555111222\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-111222333-0\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/register/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"register",
+								""
+							]
+						},
+						"description": "Register the original property owner"
+					},
+					"response": []
+				},
+				{
+					"name": "Register New Owner",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const timestamp = new Date().getTime();",
+									"const email = `new_owner_${timestamp}@example.com`;",
+									"pm.environment.set('new_owner_email', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const userId = pm.response.headers.get('X-User-Id');",
+									"if (userId) {",
+									"    pm.environment.set('new_owner_id', userId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"New\",\n    \"lastname\": \"Owner\",\n    \"email\": \"{{new_owner_email}}\",\n    \"phone_number\": \"+233555333444\",\n    \"password\": \"TestPass123!\",\n    \"role\": \"property_owner\",\n    \"id_type\": \"Ghana Card\",\n    \"id_value\": \"GHA-333444555-0\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/register/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"register",
+								""
+							]
+						},
+						"description": "Register the new property owner"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Users (Admin Only)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_ids\": [\"{{original_owner_id}}\", \"{{new_owner_id}}\"],\n    \"verification_status\": \"approved\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/user/verify/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"user",
+								"verify",
+								""
+							]
+						},
+						"description": "Admin verifies both users"
+					},
+					"response": []
+				},
+				{
+					"name": "Login Original Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has token\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.token).to.exist;",
+									"    pm.environment.set('original_owner_token', jsonData.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{original_owner_email}}\",\n    \"password\": \"TestPass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"login",
+								""
+							]
+						},
+						"description": "Login as the original property owner"
+					},
+					"response": []
+				},
+				{
+					"name": "Login New Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has token\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.token).to.exist;",
+									"    pm.environment.set('new_owner_token', jsonData.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{new_owner_email}}\",\n    \"password\": \"TestPass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"login",
+								""
+							]
+						},
+						"description": "Login as the new property owner"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Test Property",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has property ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.property_id).to.exist;",
+									"    pm.environment.set('transfer_property_id', jsonData.property_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{original_owner_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Property for Transfer Test\",\n    \"property_type\": \"2_bedroom\",\n    \"description\": \"This property is created for ownership transfer testing\",\n    \"location\": \"Test Location\",\n    \"address\": \"123 Test Street\",\n    \"price\": 1000,\n    \"rental_period\": \"monthly\",\n    \"amenities\": [\"wifi\", \"parking\"],\n    \"status\": \"available\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/property/create/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"create",
+								""
+							]
+						},
+						"description": "Create a property for transfer testing"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Property Ownership (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"property_id\": \"{{transfer_property_id}}\",\n    \"verification_status\": \"approved\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/property/verify/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"property",
+								"verify",
+								""
+							]
+						},
+						"description": "Admin verifies property ownership"
+					},
+					"response": []
+				}
+			],
+			"description": "Set up users and property for transfer tests"
+		},
+		{
+			"name": "2. Property Transfer Process",
+			"item": [
+				{
+					"name": "Initiate Property Transfer (No Document)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has transfer ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.transfer_id).to.exist;",
+									"    pm.environment.set('transfer_id', jsonData.transfer_id);",
+									"});",
+									"",
+									"pm.test(\"Response indicates processing\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('processing');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{original_owner_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"property_id\": \"{{transfer_property_id}}\",\n    \"new_owner_id\": \"{{new_owner_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/initiate/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"initiate",
+								""
+							]
+						},
+						"description": "Original owner initiates property transfer without document"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transfer Status (Original Owner)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has transfer details\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.transfer_id).to.equal(pm.environment.get('transfer_id'));",
+									"    pm.expect(jsonData.property).to.exist;",
+									"    pm.expect(jsonData.current_owner).to.exist;",
+									"    pm.expect(jsonData.new_owner).to.exist;",
+									"});",
+									"",
+									"// Store status to check if auto-executed",
+									"var jsonData = pm.response.json();",
+									"pm.environment.set('transfer_status', jsonData.status);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{original_owner_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/{{transfer_id}}/status/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"{{transfer_id}}",
+								"status",
+								""
+							]
+						},
+						"description": "Original owner checks transfer status"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transfer Status (New Owner)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has transfer details\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.transfer_id).to.equal(pm.environment.get('transfer_id'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{new_owner_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/{{transfer_id}}/status/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"{{transfer_id}}",
+								"status",
+								""
+							]
+						},
+						"description": "New owner checks transfer status"
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Transfer (If Not Auto-Executed)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Skip if already verified",
+									"if (pm.environment.get('transfer_status') === 'verified') {",
+									"    pm.request.to.skip();",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has success message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('successful');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{new_owner_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/{{transfer_id}}/confirm/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"{{transfer_id}}",
+								"confirm",
+								""
+							]
+						},
+						"description": "New owner confirms property transfer (if not auto-executed)"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Database Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Ownership has been transferred\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.current_owner).to.exist;",
+									"    pm.expect(jsonData.current_owner.id).to.equal(parseInt(pm.environment.get('new_owner_id')));",
+									"    pm.expect(jsonData.previous_owner).to.exist;",
+									"    pm.expect(jsonData.previous_owner.id).to.equal(parseInt(pm.environment.get('original_owner_id')));",
+									"    pm.expect(jsonData.blockchain_status).to.equal('consistent');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{new_owner_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/property/{{transfer_property_id}}/db-status/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"property",
+								"{{transfer_property_id}}",
+								"db-status",
+								""
+							]
+						},
+						"description": "Check database status after transfer"
+					},
+					"response": []
+				},
+				{
+					"name": "View Property After Transfer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Property has new owner\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.owner.id).to.equal(parseInt(pm.environment.get('new_owner_id')));",
+									"    pm.expect(jsonData.owner.firstname).to.equal('New');",
+									"    pm.expect(jsonData.owner.lastname).to.equal('Owner');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{new_owner_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/property/{{transfer_property_id}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"property",
+								"{{transfer_property_id}}",
+								""
+							]
+						},
+						"description": "View property details after transfer"
+					},
+					"response": []
+				}
+			],
+			"description": "Test property transfer process"
+		},
+		{
+			"name": "3. Error Cases",
+			"item": [
+				{
+					"name": "Transfer Property with Invalid New Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response has error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{original_owner_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"property_id\": \"{{transfer_property_id}}\",\n    \"new_owner_id\": \"99999\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/initiate/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"initiate",
+								""
+							]
+						},
+						"description": "Attempt transfer with invalid new owner ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Transfer Property with Wrong Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test(\"Response has error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.include('not the owner');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{new_owner_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"property_id\": \"{{transfer_property_id}}\",\n    \"new_owner_id\": \"{{original_owner_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/initiate/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"initiate",
+								""
+							]
+						},
+						"description": "Attempt transfer by non-owner"
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Transfer Not Initiated by New Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 or 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+									"});",
+									"",
+									"pm.test(\"Response has error message\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{original_owner_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/trustchain/transfer/OWN_TRF_INVALID/confirm/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"trustchain",
+								"transfer",
+								"OWN_TRF_INVALID",
+								"confirm",
+								""
+							]
+						},
+						"description": "Attempt to confirm non-existent transfer"
+					},
+					"response": []
+				}
+			],
+			"description": "Test error cases for property transfer"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "admin_email",
+			"value": "admin@trustrent.com", 
+			"type": "string"
+		},
+		{
+			"key": "admin_password",
+			"value": "Admin@123",
+			"type": "string"
+		}
+	]
+} 

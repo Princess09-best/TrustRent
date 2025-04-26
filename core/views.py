@@ -310,7 +310,7 @@ def create_property(request):
             property_type=data['property_type'],
             description=data['description'],
             location=data['location'],
-            status='pending_verification'
+            status='unlisted'
         )
 
         # Create user property association

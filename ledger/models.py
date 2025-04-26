@@ -3,6 +3,7 @@ from django.utils import timezone
 from .utils import calculate_block_hash
 import hashlib
 import re
+from core.models import UserProperty
 
 class Block(models.Model):
     """
@@ -320,7 +321,7 @@ class SmartContract(models.Model):
             # Check time-based triggers
             current_time = timezone.now()
             if 'execution_time' in self.trigger_conditions:
-                execution_time = parse_datetime(self.trigger_conditions['execution_time'])
+                execution_time = parse_datetime(self.trigger_conditions['execution_time']) # type: ignore
                 return current_time >= execution_time
             if 'expiry_check' in self.trigger_conditions and current_time >= self.expiry_date:
                 self.transition_to('expired')
@@ -435,6 +436,41 @@ class SmartContract(models.Model):
             )
 
             if success:
+                # Update UserProperty records in the core database
+                from django.db import connections
+                from core.models import UserProperty
+                
+                # Find the existing active ownership record
+                try:
+                    old_user_property = UserProperty.objects.get(
+                        property_id=self.property_id,
+                        is_active=True
+                    )
+                    
+                    # Deactivate the existing ownership record
+                    old_user_property.is_active = False
+                    old_user_property.save()
+                    
+                    # Create a new ownership record
+                    new_user_property = UserProperty.objects.create(
+                        owner_id=new_owner_id,
+                        property_id=self.property_id,
+                        is_verified=True,
+                        is_active=True,
+                        verification_status="approved",
+                        transaction_hash=block.current_hash
+                    )
+                except UserProperty.DoesNotExist:
+                    # If no existing ownership record, just create a new one
+                    new_user_property = UserProperty.objects.create(
+                        owner_id=new_owner_id,
+                        property_id=self.property_id,
+                        is_verified=True,
+                        is_active=True,
+                        verification_status="approved",
+                        transaction_hash=block.current_hash
+                    )
+                
                 self.transition_to('verified')
                 self.execution_result = {
                     'success': True,

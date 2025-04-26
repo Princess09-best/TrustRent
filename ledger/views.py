@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from .models import PropertyLedger, Block
+from .models import PropertyLedger, Block, SmartContract
 from .services import SmartContractService
 from core.models import Property, UserProperty
 import json
@@ -365,5 +365,432 @@ def migrate_hashes(request):
             'current_hash': block.current_hash
         }, status=status.HTTP_201_CREATED)
 
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def initiate_property_transfer(request):
+    """Initiate a property transfer contract"""
+    try:
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        new_owner_id = data.get('new_owner_id')
+        document_hash = data.get('document_hash')  # Optional, for sale deed/agreement
+        
+        if not all([property_id, new_owner_id]):
+            return Response({
+                'error': 'Missing required fields'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify current ownership
+        try:
+            user_property = UserProperty.objects.get(
+                property_id=property_id,
+                owner=request.user,
+                is_active=True,
+                is_verified=True
+            )
+        except UserProperty.DoesNotExist:
+            return Response({
+                'error': 'Property not found or you do not have permission'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Create transfer contract
+        success, message, contract_id = SmartContractService.create_property_transfer_contract(
+            property_id=property_id,
+            current_owner_id=request.user.id,
+            new_owner_id=new_owner_id,
+            requester_id=request.user.id,
+            require_document=bool(document_hash)
+        )
+
+        if not success:
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        # If document hash provided, update contract with it
+        if document_hash:
+            SmartContractService.handle_document_upload(contract_id, document_hash)
+
+        return Response({
+            'message': 'Property transfer initiated successfully',
+            'transfer_id': contract_id,
+            'status': 'pending_verification' if document_hash else 'processing'
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_transfer_status(request, transfer_id):
+    """Get the status of a property transfer"""
+    try:
+        contract = SmartContract.objects.get(
+            contract_id=transfer_id,
+            contract_type='property_transfer'
+        )
+        
+        # Get property details
+        with connections['core'].cursor() as cursor:
+            cursor.execute("""
+                SELECT p.title, p.location, p.property_type
+                FROM core_property p
+                WHERE p.id = %s
+            """, [contract.property_id])
+            property_result = cursor.fetchone()
+            
+            if not property_result:
+                return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            property_title, property_location, property_type = property_result
+            
+            # Get current and new owner details
+            cursor.execute("""
+                SELECT 
+                    u1.id as current_owner_id,
+                    CONCAT(u1.firstname, ' ', u1.lastname) as current_owner_name,
+                    u2.id as new_owner_id,
+                    CONCAT(u2.firstname, ' ', u2.lastname) as new_owner_name
+                FROM core_user u1
+                JOIN core_user u2 ON u2.id = %s
+                WHERE u1.id = %s
+            """, [contract.trigger_conditions.get('new_owner_id'), contract.owner_id])
+            
+            owner_result = cursor.fetchone()
+            if not owner_result:
+                return Response({'error': 'Owner details not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            current_owner_id, current_owner_name, new_owner_id, new_owner_name = owner_result
+
+        # Check permissions
+        if request.user.id not in [current_owner_id, new_owner_id]:
+            return Response({
+                'error': 'You do not have permission to view this transfer'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({
+            'transfer_id': contract.contract_id,
+            'status': contract.status,
+            'created_at': contract.created_at.isoformat(),
+            'expires_at': contract.expiry_date.isoformat(),
+            'property': {
+                'title': property_title,
+                'location': property_location,
+                'type': property_type
+            },
+            'current_owner': {
+                'name': current_owner_name
+            },
+            'new_owner': {
+                'name': new_owner_name
+            },
+            'requires_document': contract.trigger_conditions.get('document_required', False),
+            'document_uploaded': bool(contract.verification_data.get('document_hash')),
+            'execution_result': contract.execution_result if contract.status == 'verified' else None
+        })
+
+    except SmartContract.DoesNotExist:
+        return Response({'error': 'Transfer not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirm_transfer(request, transfer_id):
+    """Confirm and execute a property transfer"""
+    try:
+        contract = SmartContract.objects.get(
+            contract_id=transfer_id,
+            contract_type='property_transfer'
+        )
+        
+        # Verify the requester is the new owner
+        if request.user.id != contract.trigger_conditions.get('new_owner_id'):
+            return Response({
+                'error': 'Only the new owner can confirm the transfer'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Execute the transfer on blockchain
+        success, result = contract.auto_execute()
+        
+        if not success:
+            return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # If blockchain transfer was successful, update the database records
+        new_owner_id = contract.trigger_conditions.get('new_owner_id')
+        property_id = contract.property_id
+        transaction_hash = contract.execution_result.get('transaction_hash')
+        
+        try:
+            # Get the current UserProperty record
+            with connections['core'].cursor() as cursor:
+                # First, get the current UserProperty record
+                cursor.execute("""
+                    SELECT id, property_id, owner_id, verification_status, is_verified
+                    FROM core_userproperty
+                    WHERE property_id = %s AND is_active = TRUE
+                """, [property_id])
+                
+                current_property = cursor.fetchone()
+                if not current_property:
+                    return Response({'error': 'Property record not found'}, status=status.HTTP_404_NOT_FOUND)
+                
+                current_id, property_id, current_owner_id, verification_status, is_verified = current_property
+                
+                # Deactivate the current owner's record
+                cursor.execute("""
+                    UPDATE core_userproperty
+                    SET is_active = FALSE
+                    WHERE id = %s
+                """, [current_id])
+                
+                # Create a new UserProperty record for the new owner
+                now = timezone.now()
+                cursor.execute("""
+                    INSERT INTO core_userproperty
+                    (property_id, owner_id, is_verified, is_active, verification_status, 
+                     transaction_hash, created_at, last_verified_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, [
+                    property_id, 
+                    new_owner_id, 
+                    is_verified,
+                    True, 
+                    verification_status, 
+                    transaction_hash, 
+                    now, 
+                    now
+                ])
+                
+                new_property_id = cursor.fetchone()[0]
+                
+                # Create a verification history record
+                cursor.execute("""
+                    INSERT INTO core_verificationhistory
+                    (user_property_id, previous_status, new_status, changed_at)
+                    VALUES (%s, %s, %s, %s)
+                """, [
+                    new_property_id,
+                    'transfer_pending',
+                    'transfer_completed',
+                    now
+                ])
+                
+                # Copy any documents from the old property to the new one
+                cursor.execute("""
+                    INSERT INTO core_propertydocument
+                    (user_property_id, attachment, uploaded_at)
+                    SELECT %s, attachment, %s
+                    FROM core_propertydocument
+                    WHERE user_property_id = %s
+                """, [new_property_id, now, current_id])
+                
+                # Update the property status to 'rented' to indicate it's no longer available
+                cursor.execute("""
+                    UPDATE core_property
+                    SET status = 'rented'
+                    WHERE id = %s
+                """, [property_id])
+                
+                # Check if the new owner is a property_seeker and update their role to property_owner
+                cursor.execute("""
+                    SELECT role 
+                    FROM core_user 
+                    WHERE id = %s
+                """, [new_owner_id])
+                
+                user_role = cursor.fetchone()[0]
+                if user_role == 'property_seeker':
+                    cursor.execute("""
+                        UPDATE core_user
+                        SET role = 'property_owner'
+                        WHERE id = %s
+                    """, [new_owner_id])
+                
+        except Exception as db_error:
+            # Log the database error but still return success for the blockchain part
+            print(f"Error updating database after transfer: {str(db_error)}")
+            return Response({
+                'message': 'Property transfer recorded on blockchain but database update failed',
+                'block_number': contract.execution_result.get('block_number'),
+                'transaction_hash': transaction_hash,
+                'database_error': str(db_error)
+            }, status=status.HTTP_207_MULTI_STATUS)
+        
+        return Response({
+            'message': 'Property transfer completed successfully',
+            'block_number': contract.execution_result.get('block_number'),
+            'transaction_hash': transaction_hash,
+            'new_user_property_id': new_property_id,
+            'role_updated': user_role == 'property_seeker'
+        })
+
+    except SmartContract.DoesNotExist:
+        return Response({'error': 'Transfer not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_property_transfer_db_status(request, property_id):
+    """Check the database status of a property transfer"""
+    try:
+        # Query the core database to get property ownership details
+        with connections['core'].cursor() as cursor:
+            # Get property information
+            cursor.execute("""
+                SELECT 
+                    p.title, 
+                    p.location, 
+                    p.property_type, 
+                    p.status
+                FROM core_property p
+                WHERE p.id = %s
+            """, [property_id])
+            
+            property_result = cursor.fetchone()
+            if not property_result:
+                return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            property_title, property_location, property_type, property_status = property_result
+            
+            # Get current ownership record
+            cursor.execute("""
+                SELECT 
+                    up.id,
+                    up.owner_id,
+                    up.is_verified,
+                    up.is_active,
+                    up.verification_status,
+                    up.transaction_hash,
+                    up.created_at,
+                    up.last_verified_at,
+                    CONCAT(u.firstname, ' ', u.lastname) as owner_name,
+                    u.email as owner_email
+                FROM core_userproperty up
+                JOIN core_user u ON up.owner_id = u.id
+                WHERE up.property_id = %s
+                AND up.is_active = TRUE
+            """, [property_id])
+            
+            current_ownership = cursor.fetchone()
+            if not current_ownership:
+                return Response({'error': 'No active ownership record found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Get ownership history
+            cursor.execute("""
+                SELECT 
+                    up.id,
+                    up.owner_id,
+                    up.is_active,
+                    up.verification_status,
+                    up.transaction_hash,
+                    up.created_at,
+                    CONCAT(u.firstname, ' ', u.lastname) as owner_name,
+                    u.email as owner_email
+                FROM core_userproperty up
+                JOIN core_user u ON up.owner_id = u.id
+                WHERE up.property_id = %s
+                ORDER BY up.created_at DESC
+            """, [property_id])
+            
+            ownership_history = cursor.fetchall()
+            
+            # Get verification history
+            cursor.execute("""
+                SELECT 
+                    vh.previous_status,
+                    vh.new_status,
+                    vh.changed_at
+                FROM core_verificationhistory vh
+                JOIN core_userproperty up ON vh.user_property_id = up.id
+                WHERE up.property_id = %s
+                ORDER BY vh.changed_at DESC
+            """, [property_id])
+            
+            verification_history = cursor.fetchall()
+            
+            # Get latest block on blockchain
+            with connections['ledger'].cursor() as ledger_cursor:
+                ledger_cursor.execute("""
+                    SELECT 
+                        block_number,
+                        owner_id,
+                        current_hash,
+                        timestamp
+                    FROM ledger_block
+                    WHERE property_id = %s
+                    ORDER BY block_number DESC
+                    LIMIT 1
+                """, [property_id])
+                
+                blockchain_record = ledger_cursor.fetchone()
+        
+        # Format response
+        current_owner_id, current_owner_name, current_owner_email = current_ownership[1], current_ownership[8], current_ownership[9]
+        
+        # Check if the current owner in database matches blockchain
+        blockchain_consistent = False
+        blockchain_owner_id = None
+        if blockchain_record:
+            blockchain_owner_id = blockchain_record[1]
+            blockchain_consistent = (int(blockchain_owner_id) == int(current_owner_id))
+            
+        # Format ownership history
+        formatted_history = []
+        for record in ownership_history:
+            formatted_history.append({
+                'id': record[0],
+                'owner_id': record[1],
+                'owner_name': record[6],
+                'owner_email': record[7],
+                'is_active': record[2],
+                'status': record[3],
+                'transaction_hash': record[4],
+                'created_at': record[5].isoformat() if record[5] else None
+            })
+            
+        # Format verification history
+        formatted_verification = []
+        for record in verification_history:
+            formatted_verification.append({
+                'previous_status': record[0],
+                'new_status': record[1],
+                'changed_at': record[2].isoformat() if record[2] else None
+            })
+        
+        return Response({
+            'property': {
+                'id': property_id,
+                'title': property_title,
+                'location': property_location,
+                'type': property_type,
+                'status': property_status
+            },
+            'current_ownership': {
+                'user_property_id': current_ownership[0],
+                'owner_id': current_owner_id,
+                'owner_name': current_owner_name,
+                'owner_email': current_owner_email,
+                'is_verified': current_ownership[2],
+                'is_active': current_ownership[3],
+                'status': current_ownership[4],
+                'transaction_hash': current_ownership[5],
+                'created_at': current_ownership[6].isoformat() if current_ownership[6] else None,
+                'last_verified_at': current_ownership[7].isoformat() if current_ownership[7] else None
+            },
+            'blockchain': {
+                'latest_block': blockchain_record[0] if blockchain_record else None,
+                'blockchain_owner_id': blockchain_owner_id,
+                'hash': blockchain_record[2] if blockchain_record else None,
+                'timestamp': blockchain_record[3].isoformat() if blockchain_record and blockchain_record[3] else None,
+                'is_consistent': blockchain_consistent
+            },
+            'ownership_history': formatted_history,
+            'verification_history': formatted_verification
+        })
+    
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

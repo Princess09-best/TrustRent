@@ -330,7 +330,7 @@
 										"user",
 										"register",
 										""
-										]
+									]
 								},
 								"description": "Test registration validation with weak password"
 							},
@@ -5511,20 +5511,20 @@
 							"item": [
 								{
 									"name": "Get Status of Valid Verification",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"exec": [
-													"pm.test(\"Status code is 200\", function () {",
-													"    pm.response.to.have.status(200);",
-													"});",
-													"",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
 													"pm.test(\"Response has verification details\", function () {",
-													"    var jsonData = pm.response.json();",
-													"    pm.expect(jsonData).to.have.property('verification_id');",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.have.property('verification_id');",
 													"    pm.expect(jsonData).to.have.property('status');",
-													"    pm.expect(jsonData).to.have.property('created_at');",
+											"    pm.expect(jsonData).to.have.property('created_at');",
 													"    pm.expect(jsonData).to.have.property('property');",
 													"    pm.expect(jsonData.property).to.have.property('title');",
 													"    pm.expect(jsonData.property).to.have.property('location');",
@@ -5533,37 +5533,37 @@
 													"    pm.expect(jsonData.claimed_owner).to.have.property('name');",
 													"    pm.expect(jsonData.claimed_owner).to.have.property('id_type');",
 													"    pm.expect(jsonData.claimed_owner).to.have.property('id_value');",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "Authorization",
-												"value": "Bearer {{seeker_token}}"
-											}
+											"});"
 										],
-										"url": {
-											"raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
-											"host": [
-												"{{base_url}}"
-											],
-											"path": [
-												"api",
-												"trustchain",
-												"verify",
-												"{{verification_id}}",
-												"status",
-												""
-											]
-										},
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+												"value": "Bearer {{seeker_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/trustchain/verify/{{verification_id}}/status/",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"trustchain",
+										"verify",
+										"{{verification_id}}",
+										"status",
+										""
+									]
+								},
 										"description": "Get status of a valid verification request with all details"
-									},
-									"response": []
+							},
+							"response": []
 								},
 								{
 									"name": "Get Status of Non-existent Verification",
@@ -7033,21 +7033,21 @@
 			"description": "Tests for property details functionality"
 		}
 	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
 				"type": "text/javascript",
-				"exec": [
+										"exec": [
 					""
 				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
 				"type": "text/javascript",
-				"exec": [
+										"exec": [
 					""
 				]
 			}

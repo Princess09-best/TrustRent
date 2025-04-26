@@ -60,7 +60,8 @@ def create_property_listing(request):
             if not result:
                 return JsonResponse({'error': 'Property not found or not verified'}, status=404)
             
-            property_id_check, property_title = result
+            # Just using the title is enough since we've already verified the property exists
+            property_title = result[1]
 
         # Check for existing active listing
         with connections['ops'].cursor() as cursor:
@@ -724,6 +725,7 @@ def get_owner_listings(request):
                     p.id as property_id
                 FROM core_userproperty up
                 JOIN core_property p ON up.property_id = p.id
+                JOIN core_user u ON up.owner_id = u.id
                 WHERE up.id = ANY(%s)
             """
             cursor.execute(property_query, [user_property_ids])

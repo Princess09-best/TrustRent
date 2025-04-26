@@ -9,4 +9,10 @@ urlpatterns = [
     path('verify/create/', views.create_ownership_verification, name='create_verification'),
     path('verify/<str:verification_id>/execute/', views.execute_verification, name='execute_verification'),
     path('verify/<str:verification_id>/status/', views.get_verification_status, name='verification_status'),
+    
+    # Property transfer endpoints
+    path('transfer/initiate/', views.initiate_property_transfer, name='initiate_transfer'),
+    path('transfer/<str:transfer_id>/status/', views.get_transfer_status, name='transfer_status'),
+    path('transfer/<str:transfer_id>/confirm/', views.confirm_transfer, name='confirm_transfer'),
+    path('transfer/property/<str:property_id>/db-status/', views.check_property_transfer_db_status, name='check_property_transfer_db_status'),
 ] 
