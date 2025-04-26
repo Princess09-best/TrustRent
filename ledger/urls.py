@@ -15,4 +15,13 @@ urlpatterns = [
     path('transfer/<str:transfer_id>/status/', views.get_transfer_status, name='transfer_status'),
     path('transfer/<str:transfer_id>/confirm/', views.confirm_transfer, name='confirm_transfer'),
     path('transfer/property/<str:property_id>/db-status/', views.check_property_transfer_db_status, name='check_property_transfer_db_status'),
+    
+    # Rental agreement endpoints
+    path('rental/create/', views.create_rental_agreement, name='create_rental_agreement'),
+    path('rental/<str:agreement_id>/sign/', views.sign_rental_agreement, name='sign_rental_agreement'),
+    path('rental/<str:agreement_id>/', views.get_rental_agreement, name='get_rental_agreement'),
+    path('rental/<str:agreement_id>/terminate/', views.terminate_rental_agreement, name='terminate_rental_agreement'),
+    path('rental/property/<str:property_id>/availability/', views.check_property_availability, name='check_property_availability'),
+    path('rental/property/<str:property_id>/agreements/', views.get_property_rental_agreements, name='get_property_rental_agreements'),
+    path('rental/user/agreements/', views.get_user_rental_agreements, name='get_user_rental_agreements'),
 ] 

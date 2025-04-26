@@ -273,7 +273,8 @@ class SmartContract(models.Model):
     CONTRACT_TYPES = [
         ('ownership_verification', 'Ownership Verification'),
         ('property_transfer', 'Property Transfer'),
-        ('document_verification', 'Document Verification')
+        ('document_verification', 'Document Verification'),
+        ('rental_agreement', 'Rental Agreement')
     ]
 
     TRIGGER_TYPES = [
@@ -484,4 +485,74 @@ class SmartContract(models.Model):
 
         except Exception as e:
             return False, str(e)
+
+class RentalAgreement(models.Model):
+    """
+    Represents a rental agreement between a property owner and a tenant.
+    Links to a smart contract for enforcement and validation.
+    """
+    AGREEMENT_STATUS = [
+        ('pending', 'Pending'),
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('terminated', 'Terminated'),
+        ('cancelled', 'Cancelled')
+    ]
+    
+    agreement_id = models.CharField(max_length=64, unique=True)
+    property_id = models.CharField(max_length=100)
+    owner_id = models.IntegerField()
+    tenant_id = models.IntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    monthly_rent = models.DecimalField(max_digits=10, decimal_places=2)
+    security_deposit = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=AGREEMENT_STATUS, default='pending')
+    terms_conditions = models.JSONField(default=dict)
+    owner_signature = models.BooleanField(default=False)
+    tenant_signature = models.BooleanField(default=False)
+    signature_date_owner = models.DateTimeField(null=True)
+    signature_date_tenant = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    smart_contract_id = models.CharField(max_length=64, null=True)
+    payment_history = models.JSONField(default=list)
+    
+    class Meta:
+        db_table = 'ledger_rental_agreement'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Rental Agreement {self.agreement_id} - {self.status}"
+    
+    def is_fully_signed(self):
+        """Check if both parties have signed the agreement"""
+        return self.owner_signature and self.tenant_signature
+    
+    def is_active(self):
+        """Check if the agreement is currently active based on dates and signatures"""
+        today = timezone.now().date()
+        return (
+            self.status == 'active' and 
+            self.is_fully_signed() and
+            self.start_date <= today <= self.end_date
+        )
+        
+    def record_signature(self, user_id, is_owner=True):
+        """Record a signature from either the owner or tenant"""
+        if is_owner and user_id == self.owner_id:
+            self.owner_signature = True
+            self.signature_date_owner = timezone.now()
+        elif not is_owner and user_id == self.tenant_id:
+            self.tenant_signature = True
+            self.signature_date_tenant = timezone.now()
+        
+        # If both have signed, activate the agreement
+        if self.owner_signature and self.tenant_signature:
+            today = timezone.now().date()
+            if today <= self.end_date:
+                self.status = 'active'
+                
+        self.save()
+        return True
 

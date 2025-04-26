@@ -1,7 +1,7 @@
 from django.utils import timezone
 import uuid
 from datetime import timedelta
-from .models import Block, PropertyLedger, SmartContract
+from .models import Block, PropertyLedger, SmartContract, RentalAgreement
 from django.db import connections
 
 class SmartContractService:
@@ -282,4 +282,318 @@ class SmartContractService:
                 'conditions': contract.conditions
             }
         except SmartContract.DoesNotExist:
-            return False, "Contract not found" 
+            return False, "Contract not found"
+
+class RentalAgreementService:
+    """Service class for managing rental agreements"""
+    
+    @classmethod
+    def create_rental_agreement(cls, property_id, owner_id, tenant_id, start_date, end_date, 
+                              monthly_rent, security_deposit, terms_conditions=None):
+        """
+        Creates a new rental agreement for a property
+        """
+        try:
+            # Validate dates
+            if start_date > end_date:
+                return False, "Start date cannot be after end date", None
+                
+            # Check if property exists and is verified
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT p.id, p.title, p.status, up.owner_id, up.is_verified
+                    FROM core_property p
+                    JOIN core_userproperty up ON p.id = up.property_id
+                    WHERE p.id = %s AND up.owner_id = %s AND up.is_active = true
+                """, [property_id, owner_id])
+                
+                result = cursor.fetchone()
+                if not result:
+                    return False, "Property not found or you are not the owner", None
+                
+                property_id_db, property_title, property_status, db_owner_id, is_verified = result
+                
+                if not is_verified:
+                    return False, "Property ownership has not been verified", None
+                
+                # Check if the property is available (not currently rented or in transfer)
+                if property_status != 'available':
+                    return False, f"Property is not available for rent. Current status: {property_status}", None
+                
+                # Check if there's an active rental agreement for this property
+                active_agreement = RentalAgreement.objects.filter(
+                    property_id=property_id,
+                    status__in=['pending', 'active'],
+                    end_date__gte=timezone.now().date()
+                ).first()
+                
+                if active_agreement:
+                    return False, "Property already has an active rental agreement", None
+            
+            # Generate unique agreement ID
+            agreement_id = f"RENT_{uuid.uuid4().hex[:16]}"
+            
+            # Create rental agreement
+            agreement = RentalAgreement.objects.create(
+                agreement_id=agreement_id,
+                property_id=property_id,
+                owner_id=owner_id,
+                tenant_id=tenant_id,
+                start_date=start_date,
+                end_date=end_date,
+                monthly_rent=monthly_rent,
+                security_deposit=security_deposit,
+                terms_conditions=terms_conditions or {},
+                status='pending'
+            )
+            
+            # Create a linked smart contract for enforcement
+            contract_id = f"RENT_CONTRACT_{uuid.uuid4().hex[:12]}"
+            contract = SmartContract.objects.create(
+                contract_id=contract_id,
+                property_id=property_id,
+                owner_id=owner_id,
+                requester_id=tenant_id,
+                contract_type='rental_agreement',
+                status='created',
+                expiry_date=end_date,
+                trigger_type='event',
+                trigger_conditions={
+                    'rental_agreement_id': agreement_id,
+                    'required_events': ['owner_signature', 'tenant_signature'],
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat()
+                }
+            )
+            
+            # Update the agreement with the contract ID
+            agreement.smart_contract_id = contract_id
+            agreement.save()
+            
+            # Update property status to pending_rental
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    UPDATE core_property 
+                    SET status = 'pending_rental'
+                    WHERE id = %s
+                """, [property_id])
+            
+            return True, "Rental agreement created successfully", agreement_id
+            
+        except Exception as e:
+            return False, str(e), None
+    
+    @classmethod
+    def sign_agreement(cls, agreement_id, user_id, is_owner=True):
+        """
+        Record a signature on a rental agreement
+        """
+        try:
+            agreement = RentalAgreement.objects.get(agreement_id=agreement_id)
+            
+            # Validate user is either owner or tenant
+            if is_owner and agreement.owner_id != user_id:
+                return False, "You are not the owner of this property"
+                
+            if not is_owner and agreement.tenant_id != user_id:
+                return False, "You are not the tenant for this agreement"
+                
+            # Record signature
+            agreement.record_signature(user_id, is_owner)
+            
+            # Record event in the smart contract
+            contract = SmartContract.objects.get(contract_id=agreement.smart_contract_id)
+            event_type = 'owner_signature' if is_owner else 'tenant_signature'
+            contract.record_event(event_type, {'user_id': user_id, 'timestamp': timezone.now().isoformat()})
+            
+            # If both have signed, update property status in core database
+            if agreement.owner_signature and agreement.tenant_signature:
+                with connections['core'].cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE core_property 
+                        SET status = 'rented'
+                        WHERE id = %s
+                    """, [agreement.property_id])
+            
+            return True, {
+                'agreement_id': agreement.agreement_id,
+                'status': agreement.status,
+                'owner_signature': agreement.owner_signature,
+                'tenant_signature': agreement.tenant_signature,
+                'is_active': agreement.is_active()
+            }
+            
+        except RentalAgreement.DoesNotExist:
+            return False, "Rental agreement not found"
+        except SmartContract.DoesNotExist:
+            return False, "Associated smart contract not found"
+        except Exception as e:
+            return False, str(e)
+    
+    @classmethod
+    def get_agreement_details(cls, agreement_id, user_id=None):
+        """
+        Get detailed information about a rental agreement
+        """
+        try:
+            agreement = RentalAgreement.objects.get(agreement_id=agreement_id)
+            
+            # If user_id is provided, verify they are either owner or tenant
+            if user_id and user_id not in [agreement.owner_id, agreement.tenant_id]:
+                return False, "You do not have permission to view this agreement"
+            
+            # Get property details
+            with connections['core'].cursor() as cursor:
+                # Get property details
+                cursor.execute("""
+                    SELECT p.title, p.location, p.property_type, p.status
+                    FROM core_property p
+                    WHERE p.id = %s
+                """, [agreement.property_id])
+                prop_result = cursor.fetchone()
+                
+                if not prop_result:
+                    return False, "Property details not found"
+                    
+                property_details = {
+                    'title': prop_result[0],
+                    'location': prop_result[1],
+                    'type': prop_result[2],
+                    'status': prop_result[3]
+                }
+                
+                # Get owner details
+                cursor.execute("""
+                    SELECT CONCAT(u.firstname, ' ', u.lastname), u.email, u.phone_number
+                    FROM core_user u
+                    WHERE u.id = %s
+                """, [agreement.owner_id])
+                owner_result = cursor.fetchone()
+                
+                if not owner_result:
+                    return False, "Owner details not found"
+                    
+                owner_details = {
+                    'name': owner_result[0],
+                    'email': owner_result[1],
+                    'phone': owner_result[2]
+                }
+                
+                # Get tenant details
+                cursor.execute("""
+                    SELECT CONCAT(u.firstname, ' ', u.lastname), u.email, u.phone_number
+                    FROM core_user u
+                    WHERE u.id = %s
+                """, [agreement.tenant_id])
+                tenant_result = cursor.fetchone()
+                
+                if not tenant_result:
+                    return False, "Tenant details not found"
+                    
+                tenant_details = {
+                    'name': tenant_result[0],
+                    'email': tenant_result[1],
+                    'phone': tenant_result[2]
+                }
+            
+            return True, {
+                'agreement_id': agreement.agreement_id,
+                'property': property_details,
+                'owner': owner_details,
+                'tenant': tenant_details,
+                'dates': {
+                    'start_date': agreement.start_date.isoformat(),
+                    'end_date': agreement.end_date.isoformat(),
+                    'created_at': agreement.created_at.isoformat(),
+                    'signature_date_owner': agreement.signature_date_owner.isoformat() if agreement.signature_date_owner else None,
+                    'signature_date_tenant': agreement.signature_date_tenant.isoformat() if agreement.signature_date_tenant else None
+                },
+                'financial': {
+                    'monthly_rent': float(agreement.monthly_rent),
+                    'security_deposit': float(agreement.security_deposit)
+                },
+                'status': agreement.status,
+                'signatures': {
+                    'owner_signed': agreement.owner_signature,
+                    'tenant_signed': agreement.tenant_signature,
+                    'fully_signed': agreement.is_fully_signed()
+                },
+                'terms_conditions': agreement.terms_conditions,
+                'payment_history': agreement.payment_history
+            }
+            
+        except RentalAgreement.DoesNotExist:
+            return False, "Rental agreement not found"
+        except Exception as e:
+            return False, str(e)
+    
+    @classmethod
+    def terminate_agreement(cls, agreement_id, user_id, reason=None):
+        """
+        Terminate a rental agreement before its end date
+        """
+        try:
+            agreement = RentalAgreement.objects.get(agreement_id=agreement_id)
+            
+            # Verify user is the owner
+            if agreement.owner_id != user_id:
+                return False, "Only the property owner can terminate an agreement"
+                
+            # Check if agreement is active
+            if agreement.status != 'active':
+                return False, f"Cannot terminate agreement with status: {agreement.status}"
+                
+            # Update agreement status
+            agreement.status = 'terminated'
+            agreement.updated_at = timezone.now()
+            agreement.terms_conditions['termination'] = {
+                'date': timezone.now().isoformat(),
+                'reason': reason or "Owner initiated termination",
+                'by_user_id': user_id
+            }
+            agreement.save()
+            
+            # Update property status in core database
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    UPDATE core_property 
+                    SET status = 'available'
+                    WHERE id = %s
+                """, [agreement.property_id])
+            
+            return True, "Rental agreement terminated successfully"
+            
+        except RentalAgreement.DoesNotExist:
+            return False, "Rental agreement not found"
+        except Exception as e:
+            return False, str(e)
+    
+    @classmethod
+    def check_property_availability(cls, property_id):
+        """
+        Check if a property is available for sale or rent based on rental agreements
+        """
+        try:
+            # Check for active rental agreements
+            active_agreement = RentalAgreement.objects.filter(
+                property_id=property_id,
+                status__in=['pending', 'active'],
+                end_date__gte=timezone.now().date()
+            ).first()
+            
+            if active_agreement:
+                return False, {
+                    'is_available': False,
+                    'reason': f"Property has an active rental agreement until {active_agreement.end_date.isoformat()}",
+                    'current_status': active_agreement.status,
+                    'agreement_id': active_agreement.agreement_id,
+                    'tenant_id': active_agreement.tenant_id
+                }
+            
+            return True, {
+                'is_available': True,
+                'message': "Property is available for listing"
+            }
+            
+        except Exception as e:
+            return False, str(e) 

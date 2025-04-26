@@ -4,12 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from .models import PropertyLedger, Block, SmartContract
-from .services import SmartContractService
+from .models import PropertyLedger, Block, SmartContract, RentalAgreement
+from .services import SmartContractService, RentalAgreementService
 from core.models import Property, UserProperty
 import json
 from .serializers import BlockSerializer
 from django.db import connections
+from datetime import datetime
 
 # Create your views here.
 
@@ -396,6 +397,14 @@ def initiate_property_transfer(request):
                 'error': 'Property not found or you do not have permission'
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Check if the property has an active rental agreement
+        success, result = RentalAgreementService.check_property_availability(property_id)
+        
+        if not success and isinstance(result, dict) and 'is_available' in result and not result['is_available']:
+            return Response({
+                'error': f"Cannot transfer property. {result['reason']}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         # Create transfer contract
         success, message, contract_id = SmartContractService.create_property_transfer_contract(
             property_id=property_id,
@@ -792,5 +801,261 @@ def check_property_transfer_db_status(request, property_id):
             'verification_history': formatted_verification
         })
     
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Rental Agreement Endpoints
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_rental_agreement(request):
+    """Create a new rental agreement for a property"""
+    try:
+        # Validate user is a property owner
+        if request.user.role != 'property_owner':
+            return Response({
+                'error': 'Only property owners can create rental agreements'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Extract data from request
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        tenant_id = data.get('tenant_id')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        monthly_rent = data.get('monthly_rent')
+        security_deposit = data.get('security_deposit')
+        terms_conditions = data.get('terms_conditions')
+        
+        # Validate required fields
+        if not all([property_id, tenant_id, start_date, end_date, monthly_rent]):
+            return Response({
+                'error': 'Missing required fields. Required: property_id, tenant_id, start_date, end_date, monthly_rent'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Parse dates
+        try:
+            start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            return Response({
+                'error': 'Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Convert to date only (no time)
+        start_date = start_date.date()
+        end_date = end_date.date()
+        
+        # Create rental agreement
+        success, message, agreement_id = RentalAgreementService.create_rental_agreement(
+            property_id=property_id,
+            owner_id=request.user.id,
+            tenant_id=tenant_id,
+            start_date=start_date,
+            end_date=end_date,
+            monthly_rent=float(monthly_rent),
+            security_deposit=float(security_deposit) if security_deposit else 0.0,
+            terms_conditions=terms_conditions
+        )
+        
+        if not success:
+            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            'message': message,
+            'agreement_id': agreement_id
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sign_rental_agreement(request, agreement_id):
+    """Sign a rental agreement as owner or tenant"""
+    try:
+        # Determine if user is owner or tenant
+        is_owner = request.user.role == 'property_owner'
+        
+        # Sign agreement
+        success, result = RentalAgreementService.sign_agreement(
+            agreement_id=agreement_id,
+            user_id=request.user.id,
+            is_owner=is_owner
+        )
+        
+        if not success:
+            return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(result, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_rental_agreement(request, agreement_id):
+    """Get details of a rental agreement"""
+    try:
+        # Get agreement details
+        success, result = RentalAgreementService.get_agreement_details(
+            agreement_id=agreement_id,
+            user_id=request.user.id
+        )
+        
+        if not success:
+            return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(result, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def terminate_rental_agreement(request, agreement_id):
+    """Terminate a rental agreement before its end date"""
+    try:
+        # Validate user is a property owner
+        if request.user.role != 'property_owner':
+            return Response({
+                'error': 'Only property owners can terminate rental agreements'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get reason from request
+        data = json.loads(request.body) if request.body else {}
+        reason = data.get('reason')
+        
+        # Terminate agreement
+        success, result = RentalAgreementService.terminate_agreement(
+            agreement_id=agreement_id,
+            user_id=request.user.id,
+            reason=reason
+        )
+        
+        if not success:
+            return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            'message': result
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_property_availability(request, property_id):
+    """Check if a property is available for sale or rent"""
+    try:
+        # Check availability
+        success, result = RentalAgreementService.check_property_availability(property_id)
+        
+        if not success and not isinstance(result, dict):
+            return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(result, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_property_rental_agreements(request, property_id):
+    """Get all rental agreements for a property"""
+    try:
+        # Validate ownership if property owner
+        if request.user.role == 'property_owner':
+            try:
+                UserProperty.objects.get(
+                    property_id=property_id,
+                    owner=request.user,
+                    is_active=True
+                )
+            except UserProperty.DoesNotExist:
+                return Response({
+                    'error': 'Property not found or you do not have permission'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get agreements
+        agreements = RentalAgreement.objects.filter(property_id=property_id)
+        
+        # If user is tenant, only show their agreements
+        if request.user.role == 'property_seeker':
+            agreements = agreements.filter(tenant_id=request.user.id)
+        
+        # Convert to list of dicts
+        agreements_data = []
+        for agreement in agreements:
+            agreements_data.append({
+                'agreement_id': agreement.agreement_id,
+                'start_date': agreement.start_date.isoformat(),
+                'end_date': agreement.end_date.isoformat(),
+                'status': agreement.status,
+                'monthly_rent': float(agreement.monthly_rent),
+                'owner_signed': agreement.owner_signature,
+                'tenant_signed': agreement.tenant_signature,
+                'created_at': agreement.created_at.isoformat()
+            })
+        
+        return Response({
+            'property_id': property_id,
+            'agreements': agreements_data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_rental_agreements(request):
+    """Get all rental agreements for the current user"""
+    try:
+        user_id = request.user.id
+        status_filter = request.query_params.get('status')
+        
+        # Query based on user role
+        if request.user.role == 'property_owner':
+            agreements = RentalAgreement.objects.filter(owner_id=user_id)
+        elif request.user.role == 'property_seeker':
+            agreements = RentalAgreement.objects.filter(tenant_id=user_id)
+        else:
+            return Response({
+                'error': 'Invalid user role'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Apply status filter if provided
+        if status_filter:
+            agreements = agreements.filter(status=status_filter)
+        
+        # Convert to list of dicts
+        agreements_data = []
+        for agreement in agreements:
+            # Get property title
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT title
+                    FROM core_property
+                    WHERE id = %s
+                """, [agreement.property_id])
+                property_title = cursor.fetchone()[0] if cursor.fetchone() else "Unknown Property"
+            
+            agreements_data.append({
+                'agreement_id': agreement.agreement_id,
+                'property_id': agreement.property_id,
+                'property_title': property_title,
+                'start_date': agreement.start_date.isoformat(),
+                'end_date': agreement.end_date.isoformat(),
+                'status': agreement.status,
+                'monthly_rent': float(agreement.monthly_rent),
+                'owner_signed': agreement.owner_signature,
+                'tenant_signed': agreement.tenant_signature,
+                'created_at': agreement.created_at.isoformat()
+            })
+        
+        return Response({
+            'agreements': agreements_data
+        }, status=status.HTTP_200_OK)
+        
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

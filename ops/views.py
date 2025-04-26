@@ -63,6 +63,26 @@ def create_property_listing(request):
             # Just using the title is enough since we've already verified the property exists
             property_title = result[1]
 
+        # Check if the property has an active rental agreement
+        with connections['ledger'].cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    agreement_id, 
+                    status, 
+                    end_date
+                FROM ledger_rental_agreement
+                WHERE property_id = %s 
+                AND status IN ('pending', 'active')
+                AND end_date >= CURRENT_DATE
+            """, [property_id])
+            
+            active_agreement = cursor.fetchone()
+            if active_agreement:
+                agreement_id, status, end_date = active_agreement
+                return JsonResponse({
+                    'error': f'Cannot create listing. Property has an active rental agreement (ID: {agreement_id}) until {end_date}'
+                }, status=400)
+
         # Check for existing active listing
         with connections['ops'].cursor() as cursor:
             cursor.execute("""
