@@ -331,9 +331,15 @@ class SmartContract(models.Model):
         elif self.trigger_type == 'event':
             # Check event-based triggers
             if 'required_events' in self.trigger_conditions:
-                required_events = set(self.trigger_conditions['required_events'])
-                occurred_events = set(self.verification_data.get('events', []))
-                return required_events.issubset(occurred_events)
+                required_event_types = set(self.trigger_conditions['required_events'])
+                occurred_event_types = set()
+                
+                # Get all event types that have occurred
+                for event in self.verification_data.get('events', []):
+                    occurred_event_types.add(event['type'])
+                
+                # Check if all required events have occurred
+                return required_event_types.issubset(occurred_event_types)
                 
         elif self.trigger_type == 'condition':
             # Check condition-based triggers
@@ -370,13 +376,14 @@ class SmartContract(models.Model):
 
     def record_event(self, event_type, event_data=None):
         """Record an event that might trigger contract execution"""
-        events = self.verification_data.get('events', [])
-        events.append({
+        if 'events' not in self.verification_data:
+            self.verification_data['events'] = []
+
+        self.verification_data['events'].append({
             'type': event_type,
             'data': event_data,
             'timestamp': timezone.now().isoformat()
         })
-        self.verification_data['events'] = events
         self.save()
         
         # Check if this event triggers execution

@@ -45,7 +45,7 @@ def create_property_listing(request):
         with connections['core'].cursor() as cursor:
             cursor.execute("SELECT property_id FROM core_userproperty WHERE id = %s", [user_property_id])
             property_id_result = cursor.fetchone()
-            property_id = property_id_result[0] if property_id_result else None
+            property_id = int(property_id_result[0]) if property_id_result else None
 
         # Verify property exists and is verified
         with connections['core'].cursor() as cursor:
@@ -74,7 +74,7 @@ def create_property_listing(request):
                 WHERE property_id = %s 
                 AND status IN ('pending', 'active')
                 AND end_date >= CURRENT_DATE
-            """, [property_id])
+            """, [str(property_id)])
             
             active_agreement = cursor.fetchone()
             if active_agreement:

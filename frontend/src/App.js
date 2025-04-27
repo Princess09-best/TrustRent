@@ -4,7 +4,14 @@ import Register from './Register';
 import Login from './Login';
 import VerificationPending from './VerificationPending';
 import AdminVerifyUsers from './AdminVerifyUserPage';
+import AdminCreateAccount from './AdminCreateAccount';
 import CreateProperty from './OwnerCreateProperty';
+import LandRepManageProperties from './LandRepManageProperties';
+import PropertyDetails from './PropertyDetails';
+import RentalAgreementCreate from './RentalAgreementCreate';
+import RentalAgreementDetails from './RentalAgreementDetails';
+import RentalAgreementList from './RentalAgreementList';
+import Navbar from './Navbar';
 import styled from 'styled-components';
 
 const AppContainer = styled.div`
@@ -12,30 +19,48 @@ const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
   background-color: ${props => props.theme.colors.background};
 `;
 
-const Title = styled.h1`
-  color: ${props => props.theme.colors.primary};
-  margin-bottom: 30px;
-  font-size: 2.5rem;
-  font-weight: 600;
+const ContentContainer = styled.div`
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
 function App() {
   return (
     <Router>
       <AppContainer>
-        <Title>TrustRent</Title>
-        <Routes>
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/verification-pending" element={<VerificationPending />} />
-          <Route path="/admin/verify-users" element={<AdminVerifyUsers />} />
-          <Route path="/create-property" element={<CreateProperty />} />
-          <Route path="/" element={<Navigate to="/register" replace />} />
-        </Routes>
+        <Navbar />
+        <ContentContainer>
+          <Routes>
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/verification-pending" element={<VerificationPending />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin/verify-users" element={<AdminVerifyUsers />} />
+            <Route path="/admin/create-account" element={<AdminCreateAccount />} />
+            
+            {/* Land Representative Routes */}
+            <Route path="/land-rep/manage-properties" element={<LandRepManageProperties />} />
+            
+            {/* Property Routes */}
+            <Route path="/create-property" element={<CreateProperty />} />
+            <Route path="/property/:propertyId" element={<PropertyDetails />} />
+            
+            {/* Rental Agreement Routes */}
+            <Route path="/rental-agreements" element={<RentalAgreementList />} />
+            <Route path="/rental-agreements/create" element={<RentalAgreementCreate />} />
+            <Route path="/rental-agreements/:agreementId" element={<RentalAgreementDetails />} />
+            
+            <Route path="/" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </ContentContainer>
       </AppContainer>
     </Router>
   );

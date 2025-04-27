@@ -1,70 +1,105 @@
-# Getting Started with Create React App
+# TrustRent Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the frontend application for TrustRent, a blockchain-based property rental platform. The frontend interacts with the Django backend API and provides a user interface for property owners and seekers.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **User Authentication**
+  - Registration
+  - Login
+  - Role-based access control
 
-### `npm start`
+- **Property Management**
+  - Create and manage property listings (for property owners)
+  - View property details
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Rental Agreement Management**
+  - Create rental agreements (for property owners)
+  - Sign rental agreements (for both property owners and seekers)
+  - View agreement details
+  - Terminate agreements (for property owners)
+  - Track agreement status
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v16+)
+- npm or yarn
+- Running TrustRent backend server
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Navigate to the frontend directory:
+   ```
+   cd frontend
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies:
+   ```
+   npm install
+   ```
+   or
+   ```
+   yarn install
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Running the Application
 
-### `npm run eject`
+1. Make sure the Django backend is running (typically on http://localhost:8000)
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. Start the frontend development server:
+   ```
+   npm start
+   ```
+   or
+   ```
+   yarn start
+   ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+3. The application will be available at http://localhost:3000
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## API Integration
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+The frontend is configured to proxy API requests to the Django backend running on http://localhost:8000. This is set up in the `package.json` file with the `"proxy"` field.
 
-## Learn More
+## Project Structure
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- `src/` - Source code directory
+  - `App.js` - Main application component with routing
+  - `index.js` - Application entry point
+  - `Navbar.jsx` - Navigation component
+  - `Login.jsx` / `Register.jsx` - Authentication components
+  - `OwnerCreateProperty.jsx` - Property creation component
+  - `RentalAgreementCreate.jsx` - Component for creating rental agreements
+  - `RentalAgreementDetails.jsx` - Component for viewing and signing rental agreements
+  - `RentalAgreementList.jsx` - Component for listing all rental agreements
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Authentication Flow
 
-### Code Splitting
+1. Users register with their email, password, and role
+2. Admin verifies user accounts
+3. Users log in to access role-specific features
+4. JWT tokens are stored in localStorage for authenticated requests
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Development
 
-### Analyzing the Bundle Size
+### Adding New Features
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+1. Create new component files in the `src/` directory
+2. Update `App.js` to include new routes
+3. Add any necessary API calls to interact with the backend
 
-### Making a Progressive Web App
+### Styling
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+The application uses Styled Components for styling. The theme is defined in `index.js` and can be extended as needed.
 
-### Advanced Configuration
+## Troubleshooting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- If you see API errors, ensure the backend server is running
+- Check that the proxy setting in package.json matches your backend URL
+- For authentication issues, clear localStorage and log in again
 
-### Deployment
+## License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is part of the TrustRent platform and is subject to its licensing terms.

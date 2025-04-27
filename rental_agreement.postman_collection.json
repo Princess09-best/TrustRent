@@ -1,0 +1,189 @@
+{
+    "info": {
+        "name": "TrustRent Rental Agreement API",
+        "description": "Collection for testing TrustRent rental agreement endpoints",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"owner@example.com\",\n    \"password\": \"your_password\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "login", ""]
+                        },
+                        "description": "Login to get JWT token"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Rental Agreement",
+            "item": [
+                {
+                    "name": "Create Rental Agreement",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"property_id\": 1,\n    \"tenant_id\": 2,\n    \"start_date\": \"2024-05-01\",\n    \"end_date\": \"2025-04-30\",\n    \"monthly_rent\": 1000.00,\n    \"security_deposit\": 2000.00\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/rental/create/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "rental", "create", ""]
+                        },
+                        "description": "Create a new rental agreement (requires property_owner role)"
+                    }
+                },
+                {
+                    "name": "Sign Rental Agreement (as Owner)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{owner_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/rental/{{agreement_id}}/sign/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "rental", "{{agreement_id}}", "sign", ""],
+                            "variable": [
+                                {
+                                    "key": "agreement_id",
+                                    "value": "RENT_test123"
+                                }
+                            ]
+                        },
+                        "description": "Sign a rental agreement as property owner (requires property_owner role)"
+                    }
+                },
+                {
+                    "name": "Sign Rental Agreement (as Tenant)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{tenant_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/rental/{{agreement_id}}/sign/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "rental", "{{agreement_id}}", "sign", ""],
+                            "variable": [
+                                {
+                                    "key": "agreement_id",
+                                    "value": "RENT_test123"
+                                }
+                            ]
+                        },
+                        "description": "Sign a rental agreement as tenant (requires property_seeker role)"
+                    }
+                },
+                {
+                    "name": "Get Rental Agreement",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/rental/{{agreement_id}}/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "rental", "{{agreement_id}}", ""],
+                            "variable": [
+                                {
+                                    "key": "agreement_id",
+                                    "value": "RENT_test123"
+                                }
+                            ]
+                        },
+                        "description": "Get details of a rental agreement (requires either property_owner or property_seeker role)"
+                    }
+                },
+                {
+                    "name": "Terminate Rental Agreement",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"reason\": \"Test termination\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/trustchain/rental/{{agreement_id}}/terminate/",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "trustchain", "rental", "{{agreement_id}}", "terminate", ""],
+                            "variable": [
+                                {
+                                    "key": "agreement_id",
+                                    "value": "RENT_test123"
+                                }
+                            ]
+                        },
+                        "description": "Terminate a rental agreement (requires property_owner role)"
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000"
+        },
+        {
+            "key": "jwt_token",
+            "value": "your_jwt_token_here"
+        },
+        {
+            "key": "owner_token",
+            "value": "owner_jwt_token_here"
+        },
+        {
+            "key": "tenant_token",
+            "value": "tenant_jwt_token_here"
+        }
+    ]
+} 

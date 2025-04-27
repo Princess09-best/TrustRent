@@ -1,0 +1,10 @@
+Django>=5.2,<6.0
+djangorestframework
+psycopg2-binary
+django-cors-headers
+djangorestframework-simplejwt
+# Optional SMS providers (uncomment as needed)
+# twilio
+# vonage
+# africastalking
+# Pillow
