@@ -1,10 +1,21 @@
-Django>=5.2,<6.0
-djangorestframework
-psycopg2-binary
-django-cors-headers
-djangorestframework-simplejwt
-# Optional SMS providers (uncomment as needed)
-# twilio
-# vonage
-# africastalking
-# Pillow
+asgiref==3.8.1
+certifi==2025.4.26
+charset-normalizer==3.4.1
+colorama==0.4.6
+Django==5.2
+django-cors-headers==4.7.0
+djangorestframework==3.16.0
+djangorestframework_simplejwt==5.5.0
+idna==3.10
+iniconfig==2.1.0
+packaging==25.0
+pillow==11.2.1
+pluggy==1.5.0
+psycopg2-binary==2.9.10
+PyJWT==2.9.0
+pytest==8.3.5
+pytest-django==4.11.1
+requests==2.32.3
+sqlparse==0.5.3
+tzdata==2025.2
+urllib3==2.4.0
