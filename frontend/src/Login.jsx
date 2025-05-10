@@ -118,7 +118,7 @@ const Login = () => {
     try {
       const response = await axios.post('/api/user/login/', formData);
       
-      // Get token from Authorization header
+      // Get token from Authorization header 
       const token = response.headers['authorization']?.split(' ')[1];
       
       if (token) {
