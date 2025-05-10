@@ -24,4 +24,7 @@ urlpatterns = [
     path('rental/property/<str:property_id>/availability/', views.check_property_availability, name='check_property_availability'),
     path('rental/property/<str:property_id>/agreements/', views.get_property_rental_agreements, name='get_property_rental_agreements'),
     path('rental/user/agreements/', views.get_user_rental_agreements, name='get_user_rental_agreements'),
+    
+    # New endpoint for blockchain verification page
+    path('blocks/', views.get_all_blocks, name='get_all_blocks'),
 ] 

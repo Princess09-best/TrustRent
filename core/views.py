@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import User, Property, PropertyImage, UserProperty, VerificationHistory, PropertyDocument
+from .models import DocumentAccessRequest, User, Property, PropertyImage, UserProperty, VerificationHistory, PropertyDocument
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.timezone import now
@@ -1210,3 +1210,136 @@ def disable_mfa(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_profile(request):
+    """
+    Get the profile information for the currently authenticated user.
+    This endpoint requires a valid JWT token in the Authorization header.
+    """
+    try:
+        user = request.user
+        
+        # Prepare the user profile data
+        profile_data = {
+            'id': user.id,
+            'first_name': user.firstname,
+            'last_name': user.lastname,
+            'email': user.email,
+            'phone_number': user.phone_number,
+            'role': user.role,
+            'is_verified': user.is_verified,
+            'created_at': user.created_at,
+            'last_login': user.last_login
+        }
+        
+        # Get role-specific stats
+        stats = {}
+        if user.role == 'property_owner':
+            # Get property owner stats from core database
+            owned_properties = UserProperty.objects.filter(owner=user)
+            stats = {
+                'total_properties': owned_properties.count(),
+                'verified_properties': owned_properties.filter(is_verified=True).count(),
+                'pending_properties': owned_properties.filter(verification_status='pending').count()
+            }
+            
+            # Get active listings count from ops database
+            with connections['ops'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM ops_propertylisting pl
+                    JOIN core_userproperty up ON pl.user_property_id = up.id
+                    WHERE up.owner_id = %s AND pl.is_active = true
+                """, [user.id])
+                stats['active_listings'] = cursor.fetchone()[0]
+            
+            # Get rental agreement stats from ledger database
+            with connections['ledger'].cursor() as cursor:
+                # Total agreements
+                cursor.execute("""
+                    SELECT COUNT(*), 
+                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                    FROM rental_agreement
+                    WHERE owner_id = %s
+                """, [user.id])
+                total_agreements, pending_agreements = cursor.fetchone()
+                stats['total_agreements'] = total_agreements
+                stats['pending_agreements'] = pending_agreements
+                
+                # Document requests stats
+                cursor.execute("""
+                    SELECT COUNT(*),
+                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                    FROM document_access_request dar
+                    JOIN core_userproperty up ON dar.user_property_id = up.id
+                    WHERE up.owner_id = %s
+                """, [user.id])
+                total_requests, pending_requests = cursor.fetchone()
+                stats['total_document_requests'] = total_requests
+                stats['pending_document_requests'] = pending_requests
+                
+                # Property transfer stats
+                cursor.execute("""
+                    SELECT COUNT(*),
+                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                    FROM property_transfer
+                    WHERE current_owner_id = %s
+                """, [user.id])
+                total_transfers, pending_transfers = cursor.fetchone()
+                stats['total_transfers'] = total_transfers
+                stats['pending_transfers'] = pending_transfers
+        
+        elif user.role == 'property_seeker':
+            # Get property seeker stats
+            access_requests = DocumentAccessRequest.objects.filter(requester=user)
+            stats = {
+                'total_requests': access_requests.count(),
+                'pending_requests': access_requests.filter(status='pending').count(),
+                'approved_requests': access_requests.filter(status='approved').count()
+            }
+            
+            # Get rental agreement stats
+            with connections['ledger'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*),
+                           COUNT(CASE WHEN status = 'active' THEN 1 END),
+                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                    FROM rental_agreement
+                    WHERE tenant_id = %s
+                """, [user.id])
+                total, active, pending = cursor.fetchone()
+                stats.update({
+                    'total_agreements': total,
+                    'active_agreements': active,
+                    'pending_agreements': pending
+                })
+        
+        elif user.role == 'land_commission_rep':
+            # Get land commission representative stats
+            stats = {
+                'total_verifications': VerificationHistory.objects.filter(
+                    user_property__property__ownership_records__owner=user
+                ).count(),
+                'pending_verifications': UserProperty.objects.filter(
+                    verification_status='pending'
+                ).count()
+            }
+        elif user.role == 'sys_admin':
+            # Get admin stats
+            stats = {
+                'total_users': User.objects.count(),
+                'pending_verifications': User.objects.filter(is_verified=False).count(),
+                'total_properties': Property.objects.count()
+            }
+            
+        profile_data['stats'] = stats
+        
+        return Response(profile_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to fetch user profile', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

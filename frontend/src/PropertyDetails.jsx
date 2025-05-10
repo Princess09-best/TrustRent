@@ -170,7 +170,7 @@ function PropertyDetails() {
           return;
         }
 
-        const response = await fetch('/api/users/profile/', {
+        const response = await fetch('/api/user/profile/', {
           headers: {
             'Authorization': `Bearer ${token}`
           }

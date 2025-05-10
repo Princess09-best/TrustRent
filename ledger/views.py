@@ -62,12 +62,30 @@ def verify_chain_integrity(request):
     """Verify the integrity of the entire blockchain"""
     try:
         ledger = PropertyLedger()
-        is_valid = ledger.verify_chain()
+        is_valid, validation_data = ledger.verify_chain()
         
-        return Response({
-            'is_valid': is_valid,
-            'message': 'Blockchain integrity verified' if is_valid else 'Blockchain integrity compromised'
-        })
+        # Add more detailed information from each block
+        if 'details' in validation_data and isinstance(validation_data['details'], list):
+            # Get all blocks
+            blocks = {block.block_number: block for block in Block.objects.all()}
+            
+            # Enhance details with more block data
+            for i, detail in enumerate(validation_data['details']):
+                block_number = detail.get('block_number')
+                if block_number in blocks:
+                    block = blocks[block_number]
+                    validation_data['details'][i].update({
+                        'property_id': block.property_id,
+                        'owner_id': block.owner_id,
+                        'document_hash': block.document_hash,
+                        'previous_hash': block.previous_hash,
+                        'current_hash': block.current_hash,
+                        'timestamp': block.timestamp.isoformat() if block.timestamp else None,
+                        'verified_by': block.verified_by,
+                        'verification_date': block.verification_date.isoformat() if block.verification_date else None
+                    })
+        
+        return Response(validation_data)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -203,9 +221,8 @@ def create_ownership_verification(request):
         
         # Get claimed owner identification details
         owner_details = {
-            'id_type': request.data.get('owner_id_type'),  # e.g., "Ghana Card"
-            'id_value': request.data.get('owner_id_value'), # e.g., "GHA-123456789-0"
-            'name': request.data.get('owner_name')
+            'id_type': request.data.get('owner_id_type'), 
+            'id_value': request.data.get('owner_id_value'), 
         }
         
         # Validate required fields
@@ -1056,6 +1073,34 @@ def get_user_rental_agreements(request):
         return Response({
             'agreements': agreements_data
         }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_blocks(request):
+    """Get all blocks in the blockchain for verification purposes"""
+    try:
+        # Fetch all blocks sorted by block number
+        blocks = Block.objects.all().order_by('block_number')
+        
+        # Format response data
+        blocks_data = []
+        for block in blocks:
+            blocks_data.append({
+                'block_number': block.block_number,
+                'property_id': block.property_id,
+                'owner_id': block.owner_id,
+                'document_hash': block.document_hash,
+                'previous_hash': block.previous_hash,
+                'current_hash': block.current_hash,
+                'timestamp': block.timestamp.isoformat() if block.timestamp else None,
+                'verified_by': block.verified_by,
+                'verification_date': block.verification_date.isoformat() if block.verification_date else None
+            })
+        
+        return Response(blocks_data, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -13,12 +13,12 @@ class PropertyImageTests(TestCase):
             cursor.execute("""
                 INSERT INTO core_user (
                     firstname, lastname, email, phone_number,
-                    password_hash, role, id_type, id_value,
-                    is_verified, is_active, created_at
+                    password, role, id_type, id_value,
+                    is_verified, is_active, created_at, mfa_enabled
                 ) VALUES (
                     'Test', 'Owner', 'owner@example.com', '+233555555555',
                     'hashed_password', 'property_owner', 'Ghana Card', 'GHA-123456789-0',
-                    true, true, %s
+                    true, true, %s, false
                 ) RETURNING id
             """, [timezone.now()])
             self.owner_id = cursor.fetchone()[0]

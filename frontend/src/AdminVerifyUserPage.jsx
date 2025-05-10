@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   padding: 40px;
@@ -125,6 +126,7 @@ const LoadingSpinner = styled.div`
 `;
 
 const AdminVerifyUsers = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
@@ -132,31 +134,63 @@ const AdminVerifyUsers = () => {
 
   // Fetch unverified users
   useEffect(() => {
-    axios.get('http://127.0.0.1:8000/api/get-unverified-users/')
-      .then(response => {
-        setUsers(response.data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching users:', error);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    axios.get('/api/user/unverified/', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(response => {
+      setUsers(response.data);
+      setLoading(false);
+    })
+    .catch(error => {
+      console.error('Error fetching users:', error);
+      if (error.response?.status === 403) {
+        // Token expired or invalid
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else {
         setError(true);
         setMessage('Failed to load unverified users');
-        setLoading(false);
-      });
-  }, []);
+      }
+      setLoading(false);
+    });
+  }, [navigate]);
 
   const handleVerify = async (userId) => {
     try {
-      const response = await axios.patch('http://127.0.0.1:8000/api/verify-user/', {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await axios.patch('/api/user/verify/', {
         user_id: userId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       setError(false);
       setMessage(response.data.message);
       setUsers(prev => prev.filter(user => user.id !== userId));
     } catch (error) {
+      console.error('Verification error:', error);
       setError(true);
-      if (error.response?.data?.error) {
+      if (error.response?.status === 403) {
+        // Token expired or invalid
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else if (error.response?.data?.error) {
         setMessage(error.response.data.error);
       } else {
         setMessage("Verification failed. Please try again.");

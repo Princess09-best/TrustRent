@@ -19,13 +19,16 @@ from .views import (
     # New MFA endpoints
     enable_mfa,
     verify_mfa_setup,
-    disable_mfa
+    disable_mfa,
+    # New profile endpoint
+    get_user_profile
 )
 
 urlpatterns = [
     # User endpoints
     path('user/register/', register_user, name='register_user'),
     path('user/login/', login_user, name='login_user'),
+    path('user/profile/', get_user_profile, name='get_user_profile'),
     path('user/unverified/', get_unverified_users, name='get_unverified_users'),
     path('user/verify/', verify_user, name='verify_user'),
     path('admin/create-account/', create_admin_account, name='create_admin_account'),

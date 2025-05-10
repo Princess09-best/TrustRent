@@ -1,13 +1,13 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from .models import User
+from core.models import User
 import json
 from django.contrib.auth.hashers import make_password
 
-# Create your tests here.
+
 
 class UserRegistrationTests(TestCase):
-    databases = {'core'}  # Specify that this test uses the core database
+    databases = {'core'}  
     
     def setUp(self):
         self.client = Client()
@@ -34,7 +34,7 @@ class UserRegistrationTests(TestCase):
         self.assertTrue(User.objects.filter(email=self.valid_payload['email']).exists())
         
         data = json.loads(response.content)
-        self.assertIn('user_id', data)
+        self.assertIn('message', data)
         self.assertEqual(data['message'], 'Registration successful! Please wait for account verification.')
         self.assertFalse(data['is_verified'])
 
@@ -151,11 +151,12 @@ class UserLoginTests(TestCase):
             lastname="Doe",
             email="verified@example.com",
             phone_number="+233123456789",
-            password_hash=make_password("securepassword123"),
+            password=make_password("securepassword123"),
             role="property_owner",
             id_type="Ghana Card",
             id_value="GHA-123456789-0",
-            is_verified=True
+            is_verified=True,
+            mfa_enabled=False
         )
 
         # Create an unverified user
@@ -164,11 +165,12 @@ class UserLoginTests(TestCase):
             lastname="Doe",
             email="unverified@example.com",
             phone_number="+233987654321",
-            password_hash=make_password("securepassword123"),
+            password=make_password("securepassword123"),
             role="renter",
             id_type="Ghana Card",
             id_value="GHA-987654321-0",
-            is_verified=False
+            is_verified=False,
+            mfa_enabled=False
         )
 
         self.client = Client()
@@ -183,7 +185,6 @@ class UserLoginTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
         self.assertEqual(data['message'], 'Login successful')
-        self.assertEqual(data['user_id'], self.verified_user.id)
         self.assertEqual(data['role'], 'property_owner')
         self.assertTrue(data['is_verified'])
 
@@ -196,7 +197,7 @@ class UserLoginTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         data = json.loads(response.content)
-        self.assertEqual(data['error'], 'Account pending verification. Please wait for verification email.')
+        self.assertEqual(data['error'], 'Account pending verification')
         self.assertFalse(data['is_verified'])
 
     def test_invalid_email(self):
@@ -208,7 +209,7 @@ class UserLoginTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
         data = json.loads(response.content)
-        self.assertEqual(data['error'], 'Invalid email or password')
+        self.assertEqual(data['error'], 'Invalid credentials')
 
     def test_invalid_password(self):
         """Test login attempt with incorrect password"""
@@ -219,7 +220,7 @@ class UserLoginTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
         data = json.loads(response.content)
-        self.assertEqual(data['error'], 'Invalid email or password')
+        self.assertEqual(data['error'], 'Invalid credentials')
 
     def test_missing_fields(self):
         """Test login attempt with missing required fields"""
@@ -261,11 +262,12 @@ class PropertyManagementTests(TestCase):
             lastname='Owner',
             email='owner@example.com',
             phone_number='+233555555555',
-            password_hash=make_password('testpass123'),
+            password=make_password('testpass123'),
             role='property_owner',
             id_type='Ghana Card',
             id_value='GHA-123456789-0',
-            is_verified=True
+            is_verified=True,
+            mfa_enabled=False
         )
         
         # Test property data

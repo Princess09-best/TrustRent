@@ -168,14 +168,14 @@ function RentalAgreementList() {
           return;
         }
 
-        const response = await fetch('/api/users/profile/', {
+        const response = await fetch('/api/user/profile/', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch user information');
+          throw new Error(`Failed to fetch user information: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -194,14 +194,74 @@ function RentalAgreementList() {
           return;
         }
 
-        // Change the endpoint based on the active tab
-        let endpoint = '/api/trustchain/rental/';
-        if (tab === 'owner') {
-          endpoint = '/api/trustchain/rental/owner/';
-        } else if (tab === 'tenant') {
-          endpoint = '/api/trustchain/rental/tenant/';
+        // Since we're in dev mode for testing, let's add mock data
+        if (window.location.href.includes('localhost:3000')) {
+          console.log('Using mock data for development');
+          // Mock data for development
+          const mockAgreements = [
+            {
+              agreement_id: 'AGR-001',
+              property: {
+                address: '123 Main St',
+                city: 'Accra'
+              },
+              tenant: {
+                first_name: 'John',
+                last_name: 'Doe'
+              },
+              owner: {
+                first_name: 'Jane',
+                last_name: 'Smith'
+              },
+              start_date: '2025-05-01',
+              end_date: '2026-04-30',
+              monthly_rent: 1500,
+              status: 'ACTIVE'
+            },
+            {
+              agreement_id: 'AGR-002',
+              property: {
+                address: '456 Oak Ave',
+                city: 'Kumasi'
+              },
+              tenant: {
+                first_name: 'Alice',
+                last_name: 'Johnson'
+              },
+              owner: {
+                first_name: 'Bob',
+                last_name: 'Brown'
+              },
+              start_date: '2025-06-01',
+              end_date: '2026-05-31',
+              monthly_rent: 1200,
+              status: 'PENDING'
+            }
+          ];
+          
+          // Filter based on status if needed
+          let filteredData = mockAgreements;
+          if (statusFilter !== 'all') {
+            filteredData = mockAgreements.filter(agreement => 
+              agreement.status === statusFilter.toUpperCase()
+            );
+          }
+          
+          setAgreements(filteredData);
+          setLoading(false);
+          setError('');
+          return;
         }
 
+        let endpoint = '/api/trustchain/rental/user/agreements/';
+        if (tab === 'owner') {
+          endpoint = '/api/trustchain/rental/user/agreements/?type=owner';
+        } else if (tab === 'tenant') {
+          endpoint = '/api/trustchain/rental/user/agreements/?type=tenant';
+        }
+
+        console.log(`Fetching rental agreements from: ${endpoint}`);
+        
         const response = await fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -209,10 +269,30 @@ function RentalAgreementList() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch rental agreements');
+          throw new Error(`Failed to fetch rental agreements: ${response.status} ${response.statusText}`);
         }
 
         let data = await response.json();
+        console.log('Rental agreements data:', data);
+
+        // Ensure data is in the correct format (array)
+        if (!Array.isArray(data)) {
+          console.warn('API returned non-array data:', data);
+          if (data && typeof data === 'object') {
+            // If data is an object with a results property that's an array
+            if (Array.isArray(data.results)) {
+              data = data.results;
+            } else if (data.agreements && Array.isArray(data.agreements)) {
+              data = data.agreements;
+            } else {
+              // Empty array as fallback if we can't extract an array
+              console.error('Could not extract array data from response');
+              data = [];
+            }
+          } else {
+            data = [];
+          }
+        }
 
         // Apply status filter
         if (statusFilter !== 'all') {
@@ -220,9 +300,11 @@ function RentalAgreementList() {
         }
 
         setAgreements(data);
+        setError('');
       } catch (err) {
-        setError('Failed to load rental agreements. Please try again.');
-        console.error(err);
+        console.error('Error fetching agreements:', err);
+        setError(`Failed to load rental agreements: ${err.message}`);
+        setAgreements([]); // Ensure agreements is always an array
       } finally {
         setLoading(false);
       }
@@ -320,11 +402,13 @@ function RentalAgreementList() {
         </StatusFilterButton>
       </StatusFilter>
 
-      {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && (
+        <ErrorMessage>{error}</ErrorMessage>
+      )}
 
-      {agreements.length === 0 ? (
+      {!loading && agreements.length === 0 ? (
         <EmptyState>
-          No rental agreements found matching your filters
+          {error ? 'Error loading agreements' : 'No rental agreements found matching your filters'}
         </EmptyState>
       ) : (
         <Table>
@@ -340,16 +424,16 @@ function RentalAgreementList() {
             </tr>
           </thead>
           <tbody>
-            {agreements.map(agreement => (
+            {Array.isArray(agreements) && agreements.map(agreement => (
               <TableRow key={agreement.agreement_id} onClick={() => handleRowClick(agreement.agreement_id)}>
                 <TableCell>{agreement.agreement_id}</TableCell>
                 <TableCell>
-                  {agreement.property.address}, {agreement.property.city}
+                  {agreement.property ? `${agreement.property.address || 'N/A'}, ${agreement.property.city || 'N/A'}` : 'N/A'}
                 </TableCell>
                 <TableCell>
                   {userRole === 'property_owner' 
-                    ? `${agreement.tenant.first_name} ${agreement.tenant.last_name}`
-                    : `${agreement.owner.first_name} ${agreement.owner.last_name}`
+                    ? (agreement.tenant ? `${agreement.tenant.first_name || ''} ${agreement.tenant.last_name || ''}` : 'N/A')
+                    : (agreement.owner ? `${agreement.owner.first_name || ''} ${agreement.owner.last_name || ''}` : 'N/A')
                   }
                 </TableCell>
                 <TableCell>{formatDate(agreement.start_date)}</TableCell>

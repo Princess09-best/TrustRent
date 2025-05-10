@@ -20,11 +20,11 @@ class PropertyManagementTests(TestCase):
             INSERT INTO core_user (
                 firstname, lastname, email, phone_number, password,
                 role, id_type, id_value, is_verified, created_at, is_active,
-                is_staff, is_superuser, last_login
+                is_staff, is_superuser, last_login, mfa_enabled
             ) VALUES (
                 'Test', 'Owner', 'testowner@example.com', '+233555555555',
                 %s, 'property_owner', 'Ghana Card', 'GHA-123456789-1',
-                true, %s, true, false, false, %s
+                true, %s, true, false, false, %s, false
             ) RETURNING id
         """, [make_password('testpass123'), timezone.now(), timezone.now()])
         self.owner_id = cursor.fetchone()[0]
@@ -34,11 +34,11 @@ class PropertyManagementTests(TestCase):
             INSERT INTO core_user (
                 firstname, lastname, email, phone_number, password,
                 role, id_type, id_value, is_verified, created_at, is_active,
-                is_staff, is_superuser, last_login
+                is_staff, is_superuser, last_login, mfa_enabled
             ) VALUES (
                 'LC', 'Rep', 'lc.rep@landcomm.go.ke', '+233555555556',
                 %s, 'land_commission_rep', 'Ghana Card', 'GHA-987654321-1',
-                true, %s, true, true, false, %s
+                true, %s, true, true, false, %s, false
             ) RETURNING id
         """, [make_password('securepass123'), timezone.now(), timezone.now()])
         self.lc_rep_id = cursor.fetchone()[0]

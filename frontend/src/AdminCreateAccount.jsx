@@ -111,10 +111,12 @@ function AdminCreateAccount() {
     email: '',
     password: '',
     confirm_password: '',
-    first_name: '',
-    last_name: '',
-    phone: '',
-    role: 'admin', // Default role
+    firstname: '',
+    lastname: '',
+    phone_number: '',
+    role: 'admin',
+    id_type: 'Ghana Card',
+    id_value: ''
   });
 
   const handleChange = (e) => {
@@ -154,12 +156,12 @@ function AdminCreateAccount() {
     const submitData = {
       email: formData.email,
       password: formData.password,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      phone: formData.phone,
-      role: formData.role,
-      // Pre-verify since admin is creating the account
-      is_verified: true
+      firstname: formData.firstname,
+      lastname: formData.lastname,
+      phone_number: formData.phone_number,
+      role: formData.role === 'admin' ? 'sys_admin' : 'land_commission_rep',
+      id_type: formData.id_type,
+      id_value: formData.id_value
     };
 
     try {
@@ -191,10 +193,12 @@ function AdminCreateAccount() {
         email: '',
         password: '',
         confirm_password: '',
-        first_name: '',
-        last_name: '',
-        phone: '',
-        role: 'admin'
+        firstname: '',
+        lastname: '',
+        phone_number: '',
+        role: 'admin',
+        id_type: 'Ghana Card',
+        id_value: ''
       });
     } catch (err) {
       setError(err.message || 'Failed to create account. Please try again.');
@@ -210,24 +214,24 @@ function AdminCreateAccount() {
       <Form onSubmit={handleSubmit}>
         <FormRow>
           <FormGroup>
-            <Label htmlFor="first_name">First Name</Label>
+            <Label htmlFor="firstname">First Name</Label>
             <Input
               type="text"
-              id="first_name"
-              name="first_name"
-              value={formData.first_name}
+              id="firstname"
+              name="firstname"
+              value={formData.firstname}
               onChange={handleChange}
               required
             />
           </FormGroup>
           
           <FormGroup>
-            <Label htmlFor="last_name">Last Name</Label>
+            <Label htmlFor="lastname">Last Name</Label>
             <Input
               type="text"
-              id="last_name"
-              name="last_name"
-              value={formData.last_name}
+              id="lastname"
+              name="lastname"
+              value={formData.lastname}
               onChange={handleChange}
               required
             />
@@ -247,14 +251,15 @@ function AdminCreateAccount() {
         </FormGroup>
         
         <FormGroup>
-          <Label htmlFor="phone">Phone Number</Label>
+          <Label htmlFor="phone_number">Phone Number</Label>
           <Input
             type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
+            id="phone_number"
+            name="phone_number"
+            value={formData.phone_number}
             onChange={handleChange}
             required
+            placeholder="+233XXXXXXXXX"
           />
         </FormGroup>
         
@@ -285,6 +290,33 @@ function AdminCreateAccount() {
           </FormGroup>
         </FormRow>
         
+        <FormGroup>
+          <Label htmlFor="id_type">ID Type</Label>
+          <Select
+            id="id_type"
+            name="id_type"
+            value={formData.id_type}
+            onChange={handleChange}
+            required
+          >
+            <option value="Ghana Card">Ghana Card</option>
+            <option value="Passport">Passport</option>
+          </Select>
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="id_value">ID Number</Label>
+          <Input
+            type="text"
+            id="id_value"
+            name="id_value"
+            value={formData.id_value}
+            onChange={handleChange}
+            required
+            placeholder={formData.id_type === 'Ghana Card' ? 'GHA-XXXXXXXXX-X' : 'LXXXXXXX'}
+          />
+        </FormGroup>
+
         <FormGroup>
           <Label htmlFor="role">Role</Label>
           <Select
