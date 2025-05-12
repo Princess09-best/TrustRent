@@ -459,21 +459,18 @@ function Dashboard({ devMode = false, devRole = null }) {
           <Subtitle>Find properties and manage your rental agreements</Subtitle>
           
           <CardsContainer>
+            <Card onClick={() => navigate('/browse-properties')}>
+              <CardTitle>Browse Properties</CardTitle>
+              <CardDescription>
+                Find and view available properties
+              </CardDescription>
+            </Card>
             <Card onClick={() => navigate('/rental-agreements')}>
               <CardTitle>Rental Agreements</CardTitle>
               <CardDescription>
                 View and manage your rental agreements
               </CardDescription>
             </Card>
-            {/* 
-              Property search would be added here
-              <Card to="/search-properties">
-                <CardTitle>Search Properties</CardTitle>
-                <CardDescription>
-                  Find and view available properties for rent
-                </CardDescription>
-              </Card>
-            */}
           </CardsContainer>
           
           <StatsContainer>

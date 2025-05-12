@@ -8,6 +8,7 @@ import AdminCreateAccount from './AdminCreateAccount';
 import CreateProperty from './OwnerCreateProperty';
 import MyProperties from './MyProperties';
 import MyListings from './MyListings';
+import BrowseProperties from './BrowseProperties';
 import LandRepManageProperties from './LandRepManageProperties';
 import PropertyDetails from './PropertyDetails';
 import RentalAgreementCreate from './RentalAgreementCreate';
@@ -147,6 +148,12 @@ function App() {
               <Route path="/my-listings" element={
                 <ProtectedRoute requiredRoles={['property_owner']}>
                   <MyListings />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/browse-properties" element={
+                <ProtectedRoute requiredRoles={['property_seeker']}>
+                  <BrowseProperties />
                 </ProtectedRoute>
               } />
               
