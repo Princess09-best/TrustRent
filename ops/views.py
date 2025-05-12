@@ -236,7 +236,8 @@ def get_properties(request):
             listing = listing_map.get(str(prop['user_property_id']))
             if listing:  # Only include properties that have active listings
                 combined_results.append({
-                    'id': listing['id'],
+                    'id': prop['property_id'],  # Use property_id as the main ID
+                    'listing_id': listing['id'],  # Include listing_id separately
                     'price': float(listing['price']),
                     'listing_type': listing['listing_type'],
                     'created_at': listing['created_at'].isoformat() if listing['created_at'] else None,
