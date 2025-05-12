@@ -1237,109 +1237,475 @@ def get_user_profile(request):
         # Get role-specific stats
         stats = {}
         if user.role == 'property_owner':
-            # Get property owner stats from core database
-            owned_properties = UserProperty.objects.filter(owner=user)
-            stats = {
-                'total_properties': owned_properties.count(),
-                'verified_properties': owned_properties.filter(is_verified=True).count(),
-                'pending_properties': owned_properties.filter(verification_status='pending').count()
-            }
-            
-            # Get active listings count from ops database
-            with connections['ops'].cursor() as cursor:
-                cursor.execute("""
-                    SELECT COUNT(*)
-                    FROM ops_propertylisting pl
-                    JOIN core_userproperty up ON pl.user_property_id = up.id
-                    WHERE up.owner_id = %s AND pl.is_active = true
-                """, [user.id])
-                stats['active_listings'] = cursor.fetchone()[0]
-            
-            # Get rental agreement stats from ledger database
-            with connections['ledger'].cursor() as cursor:
-                # Total agreements
-                cursor.execute("""
-                    SELECT COUNT(*), 
-                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
-                    FROM rental_agreement
-                    WHERE owner_id = %s
-                """, [user.id])
-                total_agreements, pending_agreements = cursor.fetchone()
-                stats['total_agreements'] = total_agreements
-                stats['pending_agreements'] = pending_agreements
+            try:
+                # Get basic property stats from the core database directly using Django ORM
+                owned_properties = UserProperty.objects.filter(owner=user)
+                stats = {
+                    'total_properties': owned_properties.count(),
+                    'verified_properties': owned_properties.filter(is_verified=True).count(),
+                    'pending_properties': owned_properties.filter(verification_status='pending').count(),
+                    'active_listings': 0,  # Default value until we fetch from ops
+                    'total_agreements': 0,
+                    'pending_agreements': 0,
+                    'total_document_requests': 0,
+                    'pending_document_requests': 0,
+                    'total_transfers': 0,
+                    'pending_transfers': 0
+                }
                 
-                # Document requests stats
-                cursor.execute("""
-                    SELECT COUNT(*),
-                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
-                    FROM document_access_request dar
-                    JOIN core_userproperty up ON dar.user_property_id = up.id
-                    WHERE up.owner_id = %s
-                """, [user.id])
-                total_requests, pending_requests = cursor.fetchone()
-                stats['total_document_requests'] = total_requests
-                stats['pending_document_requests'] = pending_requests
-                
-                # Property transfer stats
-                cursor.execute("""
-                    SELECT COUNT(*),
-                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
-                    FROM property_transfer
-                    WHERE current_owner_id = %s
-                """, [user.id])
-                total_transfers, pending_transfers = cursor.fetchone()
-                stats['total_transfers'] = total_transfers
-                stats['pending_transfers'] = pending_transfers
+                # Get the user property IDs first
+                try:
+                    user_property_ids = list(owned_properties.values_list('id', flat=True))
+                    
+                    # Get active listings count from ops database using the list of user_property_ids
+                    if user_property_ids:
+                        try:
+                            with connections['ops'].cursor() as cursor:
+                                # Using placeholders to prevent SQL injection
+                                placeholders = ','.join(['%s'] * len(user_property_ids))
+                                cursor.execute(f"""
+                                    SELECT COUNT(*) 
+                                    FROM ops_propertylisting
+                                    WHERE user_property_id IN ({placeholders}) AND is_active = true
+                                """, user_property_ids)
+                                stats['active_listings'] = cursor.fetchone()[0]
+                        except Exception as e:
+                            print(f"Error fetching active listings from ops database: {str(e)}")
+                            # We'll keep the default value of 0 for active_listings
+                    
+                    # Get rental agreement data from ledger database - using separate queries
+                    try:
+                        with connections['ledger'].cursor() as cursor:
+                            # Check if rental_agreement table exists
+                            cursor.execute("""
+                                SELECT EXISTS (
+                                    SELECT FROM information_schema.tables 
+                                    WHERE table_schema = 'public'
+                                    AND table_name = 'ledger_rental_agreement'
+                                )
+                            """)
+                            
+                            if cursor.fetchone()[0]:  # Table exists
+                                # Total and pending agreements
+                                cursor.execute("""
+                                    SELECT COUNT(*), 
+                                        COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                    FROM ledger_rental_agreement
+                                    WHERE owner_id = %s
+                                """, [user.id])
+                                result = cursor.fetchone()
+                                if result:
+                                    stats['total_agreements'] = result[0]
+                                    stats['pending_agreements'] = result[1]
+                            
+                            # Check if property_transfer table exists
+                            cursor.execute("""
+                                SELECT EXISTS (
+                                    SELECT FROM information_schema.tables 
+                                    WHERE table_schema = 'public'
+                                    AND table_name = 'property_transfer'
+                                )
+                            """)
+                            
+                            if cursor.fetchone()[0]:  # Table exists
+                                cursor.execute("""
+                                    SELECT COUNT(*),
+                                        COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                    FROM property_transfer
+                                    WHERE current_owner_id = %s
+                                """, [user.id])
+                                result = cursor.fetchone()
+                                if result:
+                                    stats['total_transfers'] = result[0]
+                                    stats['pending_transfers'] = result[1]
+                    except Exception as e:
+                        print(f"Error fetching ledger stats: {str(e)}")
+                        # We'll keep the default values we set earlier
+                    
+                    # Get document request stats from core database
+                    try:
+                        # Query document_access_request from the core database
+                        if user_property_ids:
+                            placeholders = ','.join(['%s'] * len(user_property_ids))
+                            with connection.cursor() as cursor:  # Use default connection for core
+                                cursor.execute(f"""
+                                    SELECT COUNT(*),
+                                        COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                    FROM core_documentaccessrequest
+                                    WHERE user_property_id IN ({placeholders})
+                                """, user_property_ids)
+                                result = cursor.fetchone()
+                                if result:
+                                    stats['total_document_requests'] = result[0]
+                                    stats['pending_document_requests'] = result[1]
+                    except Exception as e:
+                        print(f"Error fetching document request stats: {str(e)}")
+                        # We'll keep the default values we set earlier
+                except Exception as e:
+                    print(f"Error getting user property IDs: {str(e)}")
+            except Exception as e:
+                print(f"Error in property owner stats: {str(e)}")
+                stats = {
+                    'total_properties': 0,
+                    'verified_properties': 0,
+                    'pending_properties': 0,
+                    'active_listings': 0,
+                    'total_agreements': 0,
+                    'pending_agreements': 0
+                }
         
         elif user.role == 'property_seeker':
-            # Get property seeker stats
-            access_requests = DocumentAccessRequest.objects.filter(requester=user)
-            stats = {
-                'total_requests': access_requests.count(),
-                'pending_requests': access_requests.filter(status='pending').count(),
-                'approved_requests': access_requests.filter(status='approved').count()
-            }
-            
-            # Get rental agreement stats
-            with connections['ledger'].cursor() as cursor:
-                cursor.execute("""
-                    SELECT COUNT(*),
-                           COUNT(CASE WHEN status = 'active' THEN 1 END),
-                           COUNT(CASE WHEN status = 'pending' THEN 1 END)
-                    FROM rental_agreement
-                    WHERE tenant_id = %s
-                """, [user.id])
-                total, active, pending = cursor.fetchone()
-                stats.update({
-                    'total_agreements': total,
-                    'active_agreements': active,
-                    'pending_agreements': pending
-                })
+            try:
+                # Directly query DocumentAccessRequest from the core database
+                access_requests = DocumentAccessRequest.objects.filter(requester=user)
+                stats = {
+                    'total_requests': access_requests.count(),
+                    'pending_requests': access_requests.filter(status='pending').count(),
+                    'approved_requests': access_requests.filter(status='approved').count(),
+                    'total_agreements': 0,
+                    'active_agreements': 0,
+                    'pending_agreements': 0
+                }
+                
+                # Get rental agreement stats from ledger database
+                try:
+                    with connections['ledger'].cursor() as cursor:
+                        # Check if rental_agreement table exists
+                        cursor.execute("""
+                            SELECT EXISTS (
+                                SELECT FROM information_schema.tables 
+                                WHERE table_schema = 'public'
+                                AND table_name = 'ledger_rental_agreement'
+                            )
+                        """)
+                        
+                        if cursor.fetchone()[0]:  # Table exists
+                            cursor.execute("""
+                                SELECT COUNT(*),
+                                    COUNT(CASE WHEN status = 'active' THEN 1 END),
+                                    COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                FROM ledger_rental_agreement
+                                WHERE tenant_id = %s
+                            """, [user.id])
+                            result = cursor.fetchone()
+                            if result:
+                                stats.update({
+                                    'total_agreements': result[0] or 0,
+                                    'active_agreements': result[1] or 0,
+                                    'pending_agreements': result[2] or 0
+                                })
+                except Exception as e:
+                    print(f"Error fetching seeker agreement stats: {str(e)}")
+            except Exception as e:
+                print(f"Error in property seeker stats: {str(e)}")
+                stats = {
+                    'total_requests': 0,
+                    'pending_requests': 0,
+                    'approved_requests': 0,
+                    'total_agreements': 0,
+                    'active_agreements': 0,
+                    'pending_agreements': 0
+                }
         
-        elif user.role == 'land_commission_rep':
-            # Get land commission representative stats
-            stats = {
-                'total_verifications': VerificationHistory.objects.filter(
-                    user_property__property__ownership_records__owner=user
-                ).count(),
-                'pending_verifications': UserProperty.objects.filter(
-                    verification_status='pending'
-                ).count()
-            }
-        elif user.role == 'sys_admin':
-            # Get admin stats
-            stats = {
-                'total_users': User.objects.count(),
-                'pending_verifications': User.objects.filter(is_verified=False).count(),
-                'total_properties': Property.objects.count()
-            }
+        elif user.role == 'land_rep':
+            try:
+                stats = {
+                    'total_verifications': VerificationHistory.objects.filter(
+                        user_property__property__ownership_records__owner=user
+                    ).count(),
+                    'pending_verifications': UserProperty.objects.filter(
+                        verification_status='pending'
+                    ).count()
+                }
+            except Exception as e:
+                print(f"Error getting land rep stats: {str(e)}")
+                stats = {
+                    'total_verifications': 0,
+                    'pending_verifications': 0
+                }
+                
+        elif user.role == 'admin' or user.role == 'sys_admin':
+            try:
+                stats = {
+                    'total_users': User.objects.count(),
+                    'pending_verifications': User.objects.filter(is_verified=False).count(),
+                    'total_properties': Property.objects.count()
+                }
+            except Exception as e:
+                print(f"Error getting admin stats: {str(e)}")
+                stats = {
+                    'total_users': 0,
+                    'pending_verifications': 0,
+                    'total_properties': 0
+                }
             
         profile_data['stats'] = stats
         
         return Response(profile_data, status=status.HTTP_200_OK)
         
     except Exception as e:
+        print(f"Profile error: {str(e)}")
         return Response(
             {'error': 'Failed to fetch user profile', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_stats(request):
+    """
+    Get dashboard statistics for the currently authenticated user.
+    This is a simplified version of the user profile endpoint that returns only the stats.
+    """
+    try:
+        user = request.user
+        
+        # Get role-specific stats
+        stats = {}
+        if user.role == 'property_owner':
+            try:
+                # Get basic property stats from the core database directly using Django ORM
+                owned_properties = UserProperty.objects.filter(owner=user)
+                stats = {
+                    'total_properties': owned_properties.count(),
+                    'verified_properties': owned_properties.filter(is_verified=True).count(),
+                    'pending_properties': owned_properties.filter(verification_status='pending').count(),
+                    'active_listings': 0,  # Default value until we fetch from ops
+                    'total_agreements': 0,
+                    'pending_agreements': 0,
+                    'total_document_requests': 0,
+                    'pending_document_requests': 0,
+                    'total_transfers': 0,
+                    'pending_transfers': 0
+                }
+                
+                # Get the user property IDs first
+                try:
+                    user_property_ids = list(owned_properties.values_list('id', flat=True))
+                    
+                    # Get active listings count from ops database using the list of user_property_ids
+                    if user_property_ids:
+                        try:
+                            with connections['ops'].cursor() as cursor:
+                                # Using placeholders to prevent SQL injection
+                                placeholders = ','.join(['%s'] * len(user_property_ids))
+                                cursor.execute(f"""
+                                    SELECT COUNT(*) 
+                                    FROM ops_propertylisting
+                                    WHERE user_property_id IN ({placeholders}) AND is_active = true
+                                """, user_property_ids)
+                                stats['active_listings'] = cursor.fetchone()[0]
+                        except Exception as e:
+                            print(f"Error fetching active listings from ops database: {str(e)}")
+                            # We'll keep the default value of 0 for active_listings
+                    
+                    # Get rental agreement data from ledger database - using separate queries
+                    try:
+                        with connections['ledger'].cursor() as cursor:
+                            # Check if rental_agreement table exists
+                            cursor.execute("""
+                                SELECT EXISTS (
+                                    SELECT FROM information_schema.tables 
+                                    WHERE table_schema = 'public'
+                                    AND table_name = 'ledger_rental_agreement'
+                                )
+                            """)
+                            
+                            if cursor.fetchone()[0]:  # Table exists
+                                # Total and pending agreements
+                                cursor.execute("""
+                                    SELECT COUNT(*), 
+                                        COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                    FROM ledger_rental_agreement
+                                    WHERE owner_id = %s
+                                """, [user.id])
+                                result = cursor.fetchone()
+                                if result:
+                                    stats['total_agreements'] = result[0]
+                                    stats['pending_agreements'] = result[1]
+                            
+                            # Check if property_transfer table exists
+                            cursor.execute("""
+                                SELECT EXISTS (
+                                    SELECT FROM information_schema.tables 
+                                    WHERE table_schema = 'public'
+                                    AND table_name = 'property_transfer'
+                                )
+                            """)
+                            
+                            if cursor.fetchone()[0]:  # Table exists
+                                cursor.execute("""
+                                    SELECT COUNT(*),
+                                        COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                    FROM property_transfer
+                                    WHERE current_owner_id = %s
+                                """, [user.id])
+                                result = cursor.fetchone()
+                                if result:
+                                    stats['total_transfers'] = result[0]
+                                    stats['pending_transfers'] = result[1]
+                    except Exception as e:
+                        print(f"Error fetching ledger stats: {str(e)}")
+                        # We'll keep the default values we set earlier
+                    
+                    # Get document request stats from core database
+                    try:
+                        # Query document_access_request from the core database
+                        if user_property_ids:
+                            placeholders = ','.join(['%s'] * len(user_property_ids))
+                            with connection.cursor() as cursor:  # Use default connection for core
+                                cursor.execute(f"""
+                                    SELECT COUNT(*),
+                                        COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                    FROM core_documentaccessrequest
+                                    WHERE user_property_id IN ({placeholders})
+                                """, user_property_ids)
+                                result = cursor.fetchone()
+                                if result:
+                                    stats['total_document_requests'] = result[0]
+                                    stats['pending_document_requests'] = result[1]
+                    except Exception as e:
+                        print(f"Error fetching document request stats: {str(e)}")
+                        # We'll keep the default values we set earlier
+                except Exception as e:
+                    print(f"Error getting user property IDs: {str(e)}")
+            except Exception as e:
+                print(f"Error in property owner stats: {str(e)}")
+                stats = {
+                    'total_properties': 0,
+                    'verified_properties': 0,
+                    'pending_properties': 0,
+                    'active_listings': 0,
+                    'total_agreements': 0,
+                    'pending_agreements': 0
+                }
+        
+        elif user.role == 'property_seeker':
+            try:
+                # Directly query DocumentAccessRequest from the core database
+                access_requests = DocumentAccessRequest.objects.filter(requester=user)
+                stats = {
+                    'total_requests': access_requests.count(),
+                    'pending_requests': access_requests.filter(status='pending').count(),
+                    'approved_requests': access_requests.filter(status='approved').count(),
+                    'total_agreements': 0,
+                    'active_agreements': 0,
+                    'pending_agreements': 0
+                }
+                
+                # Get rental agreement stats from ledger database
+                try:
+                    with connections['ledger'].cursor() as cursor:
+                        # Check if rental_agreement table exists
+                        cursor.execute("""
+                            SELECT EXISTS (
+                                SELECT FROM information_schema.tables 
+                                WHERE table_schema = 'public'
+                                AND table_name = 'ledger_rental_agreement'
+                            )
+                        """)
+                        
+                        if cursor.fetchone()[0]:  # Table exists
+                            cursor.execute("""
+                                SELECT COUNT(*),
+                                    COUNT(CASE WHEN status = 'active' THEN 1 END),
+                                    COUNT(CASE WHEN status = 'pending' THEN 1 END)
+                                FROM ledger_rental_agreement
+                                WHERE tenant_id = %s
+                            """, [user.id])
+                            result = cursor.fetchone()
+                            if result:
+                                stats.update({
+                                    'total_agreements': result[0] or 0,
+                                    'active_agreements': result[1] or 0,
+                                    'pending_agreements': result[2] or 0
+                                })
+                except Exception as e:
+                    print(f"Error fetching seeker agreement stats: {str(e)}")
+            except Exception as e:
+                print(f"Error in property seeker stats: {str(e)}")
+                stats = {
+                    'total_requests': 0,
+                    'pending_requests': 0,
+                    'approved_requests': 0,
+                    'total_agreements': 0,
+                    'active_agreements': 0,
+                    'pending_agreements': 0
+                }
+        
+        elif user.role == 'land_rep':
+            try:
+                stats = {
+                    'total_verifications': VerificationHistory.objects.filter(
+                        user_property__property__ownership_records__owner=user
+                    ).count(),
+                    'pending_verifications': UserProperty.objects.filter(
+                        verification_status='pending'
+                    ).count()
+                }
+            except Exception as e:
+                print(f"Error getting land rep stats: {str(e)}")
+                stats = {
+                    'total_verifications': 0,
+                    'pending_verifications': 0
+                }
+                
+        elif user.role == 'admin' or user.role == 'sys_admin':
+            try:
+                stats = {
+                    'total_users': User.objects.count(),
+                    'pending_verifications': User.objects.filter(is_verified=False).count(),
+                    'total_properties': Property.objects.count()
+                }
+            except Exception as e:
+                print(f"Error getting admin stats: {str(e)}")
+                stats = {
+                    'total_users': 0,
+                    'pending_verifications': 0,
+                    'total_properties': 0
+                }
+        
+        # Convert database counts to frontend expected format for dashboard
+        if user.role == 'property_owner':
+            dashboard_stats = {
+                'properties': stats.get('total_properties', 0),
+                'agreements': stats.get('total_agreements', 0),
+                'pendingAgreements': stats.get('pending_agreements', 0),
+                'activeAgreements': stats.get('total_agreements', 0) - stats.get('pending_agreements', 0),
+                'total_properties': stats.get('total_properties', 0),
+                'verified_properties': stats.get('verified_properties', 0),
+                'pending_properties': stats.get('pending_properties', 0),
+                'active_listings': stats.get('active_listings', 0),
+            }
+        elif user.role == 'property_seeker':
+            dashboard_stats = {
+                'agreements': stats.get('total_agreements', 0),
+                'pendingAgreements': stats.get('pending_agreements', 0),
+                'activeAgreements': stats.get('active_agreements', 0),
+                'propertiesViewed': 0,  # This would need to be tracked separately
+            }
+        elif user.role == 'land_rep':
+            dashboard_stats = {
+                'properties': Property.objects.count(),
+                'pendingProperties': stats.get('pending_verifications', 0),
+                'verifiedProperties': Property.objects.filter(userproperty__is_verified=True).count(),
+                'rejectedProperties': Property.objects.filter(userproperty__verification_status='rejected').count(),
+            }
+        elif user.role == 'admin' or user.role == 'sys_admin':
+            dashboard_stats = {
+                'properties': stats.get('total_properties', 0),
+                'agreements': stats.get('total_agreements', 0) if 'total_agreements' in stats else 0,
+                'pendingVerifications': stats.get('pending_verifications', 0),
+                'pendingProperties': UserProperty.objects.filter(verification_status='pending').count(),
+            }
+        else:
+            dashboard_stats = {}
+            
+        return Response(dashboard_stats, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"Dashboard stats error: {str(e)}")
+        return Response(
+            {'error': 'Failed to fetch dashboard stats', 'detail': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

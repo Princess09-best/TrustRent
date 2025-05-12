@@ -303,7 +303,7 @@ class SmartContract(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Contract {self.contract_id} - {self.contract_type} - {self.status}"
+        return f"{self.contract_type} - {self.status} ({self.contract_id})"
 
     def transition_to(self, new_status):
         """Transitions the contract to a new status"""
@@ -562,4 +562,34 @@ class RentalAgreement(models.Model):
                 
         self.save()
         return True
+
+class PropertyTransfer(models.Model):
+    """
+    Represents a property ownership transfer transaction
+    """
+    TRANSFER_STATUS = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled')
+    ]
+    
+    property_id = models.CharField(max_length=100)
+    current_owner_id = models.IntegerField()
+    new_owner_id = models.IntegerField()
+    transfer_date = models.DateTimeField(auto_now_add=True)
+    completion_date = models.DateTimeField(null=True)
+    status = models.CharField(max_length=20, choices=TRANSFER_STATUS, default='pending')
+    transaction_hash = models.CharField(max_length=64, null=True)
+    transfer_reason = models.TextField()
+    transfer_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+    document_hash = models.CharField(max_length=64, null=True)
+    
+    class Meta:
+        db_table = 'property_transfer'
+        ordering = ['-transfer_date']
+        
+    def __str__(self):
+        return f"Property Transfer {self.property_id} - {self.status}"
 

@@ -21,7 +21,9 @@ from .views import (
     verify_mfa_setup,
     disable_mfa,
     # New profile endpoint
-    get_user_profile
+    get_user_profile,
+    # Dashboard stats endpoint
+    dashboard_stats
 )
 
 urlpatterns = [
@@ -37,6 +39,9 @@ urlpatterns = [
     path('user/mfa/enable/', enable_mfa, name='enable_mfa'),
     path('user/mfa/verify/', verify_mfa_setup, name='verify_mfa_setup'),
     path('user/mfa/disable/', disable_mfa, name='disable_mfa'),
+    
+    # Dashboard endpoint
+    path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
     
     # Property endpoints - specific routes first
     path('property/create/', create_property, name='create_property'),
