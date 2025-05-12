@@ -141,7 +141,7 @@ const Navbar = ({ devMode = false, devRole = null }) => {
   return (
     <NavbarContainer>
       <NavbarContent>
-        <Logo to="/dashboard">TrustRent</Logo>
+        <Logo to="/dashboard">BAWRA</Logo>
         
         <MobileMenuButton onClick={toggleMenu}>
           ☰

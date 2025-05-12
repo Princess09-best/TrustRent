@@ -23,7 +23,9 @@ from .views import (
     # New profile endpoint
     get_user_profile,
     # Dashboard stats endpoint
-    dashboard_stats
+    dashboard_stats,
+    # User properties endpoint
+    get_user_properties
 )
 
 urlpatterns = [
@@ -31,6 +33,7 @@ urlpatterns = [
     path('user/register/', register_user, name='register_user'),
     path('user/login/', login_user, name='login_user'),
     path('user/profile/', get_user_profile, name='get_user_profile'),
+    path('user/properties/', get_user_properties, name='get_user_properties'),
     path('user/unverified/', get_unverified_users, name='get_unverified_users'),
     path('user/verify/', verify_user, name='verify_user'),
     path('admin/create-account/', create_admin_account, name='create_admin_account'),

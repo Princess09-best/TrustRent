@@ -1709,3 +1709,104 @@ def dashboard_stats(request):
             {'error': 'Failed to fetch dashboard stats', 'detail': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_properties(request):
+    """Get all properties owned by the authenticated user"""
+    try:
+        user = request.user
+        print(f"get_user_properties called by user: {user.email}, role: {user.role}")
+        
+        # Check if user is a property owner
+        if user.role != 'property_owner':
+            print(f"User {user.email} is not a property owner, role: {user.role}")
+            return JsonResponse({'error': 'Only property owners can view their properties'}, status=403)
+        
+        properties = []
+        
+        with connection.cursor() as cursor:
+            # Get all properties owned by the user
+            cursor.execute("""
+                SELECT 
+                    p.id,
+                    p.title,
+                    p.property_type,
+                    p.description,
+                    p.location,
+                    p.status,
+                    p.created_at,
+                    up.id as user_property_id,
+                    up.is_verified,
+                    up.verification_status,
+                    up.last_verified_at
+                FROM 
+                    core_property p
+                    JOIN core_userproperty up ON p.id = up.property_id
+                WHERE 
+                    up.owner_id = %s AND up.is_active = true
+                ORDER BY
+                    p.created_at DESC
+            """, [user.id])
+            
+            property_rows = cursor.fetchall()
+            print(f"Found {len(property_rows)} properties for user {user.email}")
+            
+            # If no properties found, return empty array
+            if not property_rows:
+                print(f"No properties found for user {user.email}")
+                return JsonResponse([], safe=False)
+            
+            # Process each property and get its images
+            for row in property_rows:
+                property_id = row[0]
+                user_property_id = row[7]
+                
+                # Get the first active image for this property
+                cursor.execute("""
+                    SELECT image
+                    FROM core_propertyimage
+                    WHERE property_id = %s AND is_active = true
+                    ORDER BY uploaded_at DESC
+                    LIMIT 1
+                """, [property_id])
+                
+                image_result = cursor.fetchone()
+                image_url = image_result[0] if image_result else None
+                
+                # Get document count for this property
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM core_propertydocument
+                    WHERE user_property_id = %s
+                """, [user_property_id])
+                
+                document_count = cursor.fetchone()[0]
+                
+                # Build property object
+                property_obj = {
+                    "id": property_id,
+                    "title": row[1],
+                    "property_type": row[2],
+                    "description": row[3],
+                    "location": row[4],
+                    "status": row[5],
+                    "created_at": row[6].isoformat() if row[6] else None,
+                    "user_property_id": user_property_id,
+                    "is_verified": row[8],
+                    "verification_status": row[9],
+                    "verification_date": row[10].isoformat() if row[10] else None,
+                    "image_url": image_url,
+                    "document_count": document_count
+                }
+                
+                properties.append(property_obj)
+        
+        print(f"Returning {len(properties)} properties for user {user.email}")
+        return JsonResponse(properties, safe=False)
+    
+    except Exception as e:
+        print(f"Error in get_user_properties: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)

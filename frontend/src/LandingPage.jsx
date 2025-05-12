@@ -219,7 +219,7 @@ const LandingPage = () => {
     <LandingContainer>
       <HeroSection>
         <HeroContent>
-          <Title>TrustRent</Title>
+          <Title>BAWRA</Title>
           <Subtitle>
             A blockchain-based property management system ensuring trust, transparency, and security for all property transactions.
           </Subtitle>
@@ -232,7 +232,7 @@ const LandingPage = () => {
       
       <FeaturesSection>
         <FeaturesContainer>
-          <SectionTitle>Why Choose TrustRent?</SectionTitle>
+          <SectionTitle>Why Choose BAWRA?</SectionTitle>
           <SectionDescription>
             Our blockchain-powered platform revolutionizes property management with unmatched security and transparency.
           </SectionDescription>
@@ -291,8 +291,8 @@ const LandingPage = () => {
       
       <Footer>
         <FooterContent>
-          <SectionTitle style={{ color: 'white', fontSize: '1.8rem' }}>TrustRent</SectionTitle>
-          <Copyright>© {new Date().getFullYear()} TrustRent. All rights reserved.</Copyright>
+          <SectionTitle style={{ color: 'white', fontSize: '1.8rem' }}>BAWRA</SectionTitle>
+          <Copyright>© {new Date().getFullYear()} BAWRA. All rights reserved.</Copyright>
         </FooterContent>
       </Footer>
     </LandingContainer>

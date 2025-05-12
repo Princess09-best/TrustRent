@@ -492,7 +492,7 @@ function Dashboard({ devMode = false, devRole = null }) {
     
     return (
       <>
-        <Title>Welcome to TrustRent</Title>
+        <Title>Welcome to BAWRA</Title>
         <Subtitle>Please contact support - your account role is not recognized</Subtitle>
       </>
     );
@@ -502,7 +502,8 @@ function Dashboard({ devMode = false, devRole = null }) {
     <Container>
       <WelcomeSection>
         <h2 style={{ fontSize: '2.2rem', marginBottom: '10px', fontWeight: '600' }}>
-          Welcome, {user?.first_name} {user?.last_name}
+          Welcome, {currentUser?.first_name && currentUser?.last_name ? 
+            `${currentUser.first_name} ${currentUser.last_name}` : 'Dev User'}
         </h2>
         <p style={{ fontSize: '1.2rem', opacity: '0.9' }}>
           Here's what you can do with your {(devMode ? devRole : userRole)?.replace('_', ' ')} account

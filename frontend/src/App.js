@@ -6,6 +6,7 @@ import VerificationPending from './VerificationPending';
 import AdminVerifyUsers from './AdminVerifyUserPage';
 import AdminCreateAccount from './AdminCreateAccount';
 import CreateProperty from './OwnerCreateProperty';
+import MyProperties from './MyProperties';
 import LandRepManageProperties from './LandRepManageProperties';
 import PropertyDetails from './PropertyDetails';
 import RentalAgreementCreate from './RentalAgreementCreate';
@@ -120,6 +121,12 @@ function App() {
               <Route path="/create-property" element={
                 <ProtectedRoute requiredRoles={['property_owner']}>
                   <CreateProperty />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/my-properties" element={
+                <ProtectedRoute requiredRoles={['property_owner']}>
+                  <MyProperties />
                 </ProtectedRoute>
               } />
               
