@@ -5,12 +5,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from .models import PropertyLedger, Block, SmartContract, RentalAgreement, RentalRequest
-from .services import SmartContractService, RentalAgreementService, RentalRequestService
+from .services import SmartContractService, RentalAgreementService
 from core.models import Property, UserProperty
 import json
 from .serializers import BlockSerializer
 from django.db import connections
 from datetime import datetime
+import uuid
 
 # Create your views here.
 
@@ -845,6 +846,101 @@ def check_property_transfer_db_status(request, property_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def create_rental_request(request):
+    """Create a new rental request as a property seeker"""
+    try:
+        # Validate user is a property seeker
+        if request.user.role != 'property_seeker':
+            return Response({
+                'error': 'Only property seekers can create rental requests'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Extract data from request
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        message = data.get('message', '')
+        
+        # Debug logging
+        print(f"DEBUG: Received rental request data: {data}")
+        print(f"DEBUG: User ID: {request.user.id}, Role: {request.user.role}")
+        
+        # Validate required fields
+        if not all([property_id, start_date, end_date]):
+            return Response({
+                'error': 'Missing required fields. Required: property_id, start_date, end_date'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Parse dates
+        try:
+            start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        except (ValueError, TypeError) as e:
+            print(f"DEBUG: Date parsing error: {e}")
+            return Response({
+                'error': 'Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Convert to date only (no time)
+        start_date = start_date.date()
+        end_date = end_date.date()
+        
+        # Get property owner
+        try:
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT up.owner_id
+                    FROM core_userproperty up
+                    WHERE up.property_id = %s AND up.is_active = true
+                """, [property_id])
+                result = cursor.fetchone()
+                if not result:
+                    return Response({
+                        'error': 'Property not found or not available for rent'
+                    }, status=status.HTTP_404_NOT_FOUND)
+                owner_id = result[0]
+                print(f"DEBUG: Found owner ID: {owner_id}")
+        except Exception as db_error:
+            print(f"DEBUG: Database error: {db_error}")
+            return Response({
+                'error': f'Database error: {str(db_error)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Create rental request
+        try:
+            request_id = f"REQ_{uuid.uuid4().hex[:8].upper()}"
+            print(f"DEBUG: Generated request_id: {request_id}")
+            print(f"DEBUG: Creating rental request with: property_id={property_id}, owner_id={owner_id}, requester_id={request.user.id}")
+            
+            rental_request = RentalRequest.objects.create(
+                request_id=request_id,
+                property_id=property_id,
+                owner_id=owner_id,
+                requester_id=request.user.id,
+                start_date=start_date,
+                end_date=end_date,
+                message=message,
+                status='pending'
+            )
+            print(f"DEBUG: Rental request created successfully: {rental_request}")
+        except Exception as model_error:
+            print(f"DEBUG: Model creation error: {model_error}")
+            return Response({
+                'error': f'Failed to create rental request: {str(model_error)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            'message': 'Rental request created successfully',
+            'request_id': request_id
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        print(f"DEBUG: Unexpected error: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_rental_agreement(request):
     """Create a new rental agreement for a property"""
     try:
@@ -863,6 +959,7 @@ def create_rental_agreement(request):
         monthly_rent = data.get('monthly_rent')
         security_deposit = data.get('security_deposit')
         terms_conditions = data.get('terms_conditions')
+        rental_request_id = data.get('rental_request_id')  # New field
         
         # Validate required fields
         if not all([property_id, tenant_id, start_date, end_date, monthly_rent]):
@@ -897,6 +994,17 @@ def create_rental_agreement(request):
         
         if not success:
             return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # If this was created from a rental request, update the request status
+        if rental_request_id:
+            try:
+                rental_request = RentalRequest.objects.get(request_id=rental_request_id)
+                rental_request.status = 'approved'
+                rental_request.agreement_id = agreement_id
+                rental_request.response_date = timezone.now()
+                rental_request.save()
+            except RentalRequest.DoesNotExist:
+                pass  # Ignore if request not found
         
         return Response({
             'message': message,
@@ -1121,178 +1229,6 @@ def get_all_blocks(request):
             })
         
         return Response(blocks_data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# Rental Request Endpoints
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_rental_request(request):
-    """Create a new rental request for a property"""
-    try:
-        # Validate user is a property seeker
-        if request.user.role != 'property_seeker':
-            return Response({
-                'error': 'Only property seekers can create rental requests'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Extract data from request
-        data = json.loads(request.body)
-        property_id = data.get('property_id')
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
-        message = data.get('message')
-        
-        # Validate required fields
-        if not all([property_id, start_date, end_date]):
-            return Response({
-                'error': 'Missing required fields. Required: property_id, start_date, end_date'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Parse dates
-        try:
-            start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-        except (ValueError, TypeError):
-            return Response({
-                'error': 'Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Convert to date only (no time)
-        start_date = start_date.date()
-        end_date = end_date.date()
-        
-        # Create rental request
-        success, message_response, request_id = RentalRequestService.create_rental_request(
-            property_id=property_id,
-            requester_id=request.user.id,
-            start_date=start_date,
-            end_date=end_date,
-            message=message
-        )
-        
-        if not success:
-            return Response({'error': message_response}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({
-            'message': message_response,
-            'request_id': request_id
-        }, status=status.HTTP_201_CREATED)
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_rental_requests(request):
-    """Get all rental requests for the current user (as owner or requester)"""
-    try:
-        user_id = request.user.id
-        status_filter = request.query_params.get('status')
-        
-        # Get requests based on user role
-        if request.user.role == 'property_owner':
-            success, requests_data = RentalRequestService.get_rental_requests_for_owner(
-                owner_id=user_id,
-                status_filter=status_filter
-            )
-        elif request.user.role == 'property_seeker':
-            success, requests_data = RentalRequestService.get_rental_requests_for_requester(
-                requester_id=user_id,
-                status_filter=status_filter
-            )
-        else:
-            return Response({
-                'error': 'Invalid user role'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not success:
-            return Response({'error': requests_data}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({
-            'requests': requests_data
-        }, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_rental_request(request, request_id):
-    """Get details of a specific rental request"""
-    try:
-        # Get request details
-        success, result = RentalRequestService.get_rental_request(
-            request_id=request_id,
-            user_id=request.user.id
-        )
-        
-        if not success:
-            return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response(result, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def respond_to_rental_request(request, request_id):
-    """Respond to a rental request (approve or reject)"""
-    try:
-        # Validate user is a property owner
-        if request.user.role != 'property_owner':
-            return Response({
-                'error': 'Only property owners can respond to rental requests'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Extract data from request
-        data = json.loads(request.body)
-        status_response = data.get('status')
-        response_message = data.get('response_message')
-        
-        # For approvals, we need additional data
-        monthly_rent = data.get('monthly_rent')
-        security_deposit = data.get('security_deposit')
-        terms_conditions = data.get('terms_conditions')
-        
-        # Validate status
-        if not status_response or status_response not in ['approved', 'rejected']:
-            return Response({
-                'error': 'Invalid status. Must be either "approved" or "rejected"'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # If approving, validate monthly_rent
-        if status_response == 'approved' and not monthly_rent:
-            return Response({
-                'error': 'Monthly rent is required to approve a rental request'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Respond to the request
-        success, message, agreement_id = RentalRequestService.respond_to_rental_request(
-            request_id=request_id,
-            owner_id=request.user.id,
-            status=status_response,
-            response_message=response_message,
-            monthly_rent=float(monthly_rent) if monthly_rent else None,
-            security_deposit=float(security_deposit) if security_deposit else None,
-            terms_conditions=terms_conditions
-        )
-        
-        if not success:
-            return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
-        
-        response_data = {
-            'message': message
-        }
-        
-        # If approved, include agreement_id
-        if status_response == 'approved' and agreement_id:
-            response_data['agreement_id'] = agreement_id
-        
-        return Response(response_data, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

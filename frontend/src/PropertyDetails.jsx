@@ -444,22 +444,24 @@ function PropertyDetails() {
         return;
       }
       
-      // Navigate to rental agreement creation page with property details
-      navigate(`/rental-agreements/create`, { 
-        state: { 
-          propertyId,
-          propertyTitle: property.title,
-          startDate: rentalDetails.startDate,
-          endDate: rentalDetails.endDate,
-          message: rentalDetails.message,
-          ownerId: property.owner_id,
-          price: property.price
-        } 
+      await axios.post('/api/rental-requests/', {
+        property_id: propertyId,
+        start_date: rentalDetails.startDate,
+        end_date: rentalDetails.endDate,
+        message: rentalDetails.message
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
+      
+      setSuccess('Rental request submitted successfully. The property owner will review your request.');
+      setShowRentalRequestModal(false);
       
     } catch (err) {
       console.error('Error initiating rental request:', err);
-      setError('Failed to initiate rental request. Please try again.');
+      setError(err.response?.data?.error || 'Failed to initiate rental request. Please try again.');
+    } finally {
       setRentalRequestLoading(false);
     }
   };

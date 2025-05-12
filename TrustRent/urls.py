@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from ledger.views import create_rental_request
 
 
 urlpatterns = [
@@ -25,6 +26,7 @@ urlpatterns = [
     path('api/', include('core.urls')),
     path('api/', include('ops.urls')),
     path('api/trustchain/', include('ledger.urls')),
+    path('api/rental-requests/', create_rental_request, name='api_create_rental_request'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

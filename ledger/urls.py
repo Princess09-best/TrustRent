@@ -17,6 +17,7 @@ urlpatterns = [
     path('transfer/property/<str:property_id>/db-status/', views.check_property_transfer_db_status, name='check_property_transfer_db_status'),
     
     # Rental agreement endpoints
+    path('rental-requests/', views.create_rental_request, name='create_rental_request'),
     path('rental/create/', views.create_rental_agreement, name='create_rental_agreement'),
     path('rental/<str:agreement_id>/sign/', views.sign_rental_agreement, name='sign_rental_agreement'),
     path('rental/<str:agreement_id>/', views.get_rental_agreement, name='get_rental_agreement'),
