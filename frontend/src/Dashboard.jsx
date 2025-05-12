@@ -391,6 +391,12 @@ function Dashboard({ devMode = false, devRole = null }) {
                     View and manage your property listings
                   </CardDescription>
                 </Card>
+                <Card onClick={() => navigate('/my-listings')}>
+                  <CardTitle>My Listings</CardTitle>
+                  <CardDescription>
+                    Manage your active property listings
+                  </CardDescription>
+                </Card>
                 <Card onClick={() => navigate('/rental-agreements')}>
                   <CardTitle>Rental Agreements</CardTitle>
                   <CardDescription>

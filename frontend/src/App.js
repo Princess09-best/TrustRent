@@ -7,12 +7,14 @@ import AdminVerifyUsers from './AdminVerifyUserPage';
 import AdminCreateAccount from './AdminCreateAccount';
 import CreateProperty from './OwnerCreateProperty';
 import MyProperties from './MyProperties';
+import MyListings from './MyListings';
 import LandRepManageProperties from './LandRepManageProperties';
 import PropertyDetails from './PropertyDetails';
 import RentalAgreementCreate from './RentalAgreementCreate';
 import RentalAgreementDetails from './RentalAgreementDetails';
 import RentalAgreementList from './RentalAgreementList';
 import BlockchainVerification from './BlockchainVerification';
+import CreatePropertyListing from './CreatePropertyListing';
 import Dashboard from './Dashboard';
 import Navbar from './Navbar';
 import LandingPage from './LandingPage';
@@ -142,9 +144,22 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/my-listings" element={
+                <ProtectedRoute requiredRoles={['property_owner']}>
+                  <MyListings />
+                </ProtectedRoute>
+              } />
+              
               <Route path="/property/:propertyId" element={
                 <ProtectedRoute>
                   <PropertyDetails />
+                </ProtectedRoute>
+              } />
+              
+              {/* Property Listing Routes */}
+              <Route path="/create-property-listing/:propertyId" element={
+                <ProtectedRoute requiredRoles={['property_owner']}>
+                  <CreatePropertyListing />
                 </ProtectedRoute>
               } />
               

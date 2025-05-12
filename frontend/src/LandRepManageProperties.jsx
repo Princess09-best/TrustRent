@@ -291,7 +291,7 @@ function LandRepManageProperties() {
       // Transform the data format if needed
       const formattedProperties = data.map(property => ({
         id: property.id,
-        user_property_id: property.id, // This needs to be updated with actual user_property_id
+        user_property_id: property.user_property_id,
         title: property.title,
         description: property.description,
         location: property.location,
@@ -347,6 +347,8 @@ function LandRepManageProperties() {
         return;
       }
 
+      console.log(`Verifying property with id: ${id}, user_property_id: ${user_property_id}`);
+      
       const response = await fetch('/api/property/verify/', {
         method: 'PATCH',
         headers: {
@@ -359,9 +361,13 @@ function LandRepManageProperties() {
         })
       });
 
+      console.log("Verification API response status:", response.status);
+      
+      const responseData = await response.json();
+      console.log("Verification API response data:", responseData);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to verify property');
+        throw new Error(responseData.error || 'Failed to verify property');
       }
 
       // Update UI

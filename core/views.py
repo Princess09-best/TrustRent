@@ -431,6 +431,7 @@ def get_unverified_properties(request):
         for user_property in unverified_properties:
             property_data = {
                 'id': user_property.property.id,
+                'user_property_id': user_property.id,
                 'title': user_property.property.title,
                 'description': user_property.property.description,
                 'location': user_property.property.location,

@@ -99,7 +99,7 @@ const StatusBadge = styled.span`
   margin-top: 10px;
   background-color: ${props => {
     switch (props.status) {
-      case 'verified':
+      case 'approved':
         return '#28a745';
       case 'pending':
         return '#ffc107';
@@ -185,68 +185,75 @@ function MyProperties() {
   const [error, setError] = useState(null);
   const { currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        setLoading(true);
-        
-        // Get token from localStorage
-        const token = localStorage.getItem('token');
-        console.log('Auth status:', { isAuthenticated, hasToken: !!token, user: currentUser?.email });
-        
-        if (!token) {
-          setError('Authentication token not found. Please log in again.');
-          setLoading(false);
-          return;
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('Auth status:', { isAuthenticated, hasToken: !!token, user: currentUser?.email });
+      
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+      
+      // First get user properties from core database
+      const timestamp = new Date().getTime(); // Add timestamp for cache busting
+      const response = await axios.get(`/api/user/properties/?t=${timestamp}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
-        
-        // First get user properties from core database
-        const response = await axios.get('/api/user/properties/', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+      });
+      
+      console.log('API Response:', response.data);
+      
+      // Check if the response is an array
+      if (Array.isArray(response.data)) {
+        // Add detailed logs to check image URLs and verification status
+        response.data.forEach(property => {
+          console.log(`Property ${property.id} raw image URL:`, property.image_url);
+          console.log(`Property ${property.id} image URL type:`, typeof property.image_url);
+          console.log(`Property ${property.id} verification status:`, property.verification_status);
+          console.log(`Property ${property.id} is_verified:`, property.is_verified);
+          
+          // Convert image URL to absolute URL
+          if (property.image_url) {
+            const originalUrl = property.image_url;
+            property.image_url = getMediaUrl(property.image_url);
+            console.log(`Converted image URL from ${originalUrl} to ${property.image_url}`);
+          } else {
+            console.log(`No image URL for property ${property.id}, using default`);
           }
         });
-        
-        console.log('API Response:', response.data);
-        
-        // Check if the response is an array
-        if (Array.isArray(response.data)) {
-          // Add detailed logs to check image URLs
-          response.data.forEach(property => {
-            console.log(`Property ${property.id} raw image URL:`, property.image_url);
-            console.log(`Property ${property.id} image URL type:`, typeof property.image_url);
-            
-            // Convert image URL to absolute URL
-            if (property.image_url) {
-              const originalUrl = property.image_url;
-              property.image_url = getMediaUrl(property.image_url);
-              console.log(`Converted image URL from ${originalUrl} to ${property.image_url}`);
-            } else {
-              console.log(`No image URL for property ${property.id}, using default`);
-            }
-          });
-          setProperties(response.data);
-        } else {
-          console.error('Unexpected response format:', response.data);
-          setProperties([]);
-        }
-      } catch (err) {
-        console.error('Error fetching properties:', err);
-        if (err.response) {
-          console.error('Response error:', err.response.status, err.response.data);
-          setError(`Failed to load properties: ${err.response.data?.error || err.response.statusText}`);
-        } else if (err.request) {
-          console.error('Request error:', err.request);
-          setError('Network error. Server did not respond.');
-        } else {
-          setError(`Error: ${err.message}`);
-        }
-      } finally {
-        setLoading(false);
+        setProperties(response.data);
+      } else {
+        console.error('Unexpected response format:', response.data);
+        setProperties([]);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching properties:', err);
+      if (err.response) {
+        console.error('Response error:', err.response.status, err.response.data);
+        setError(`Failed to load properties: ${err.response.data?.error || err.response.statusText}`);
+      } else if (err.request) {
+        console.error('Request error:', err.request);
+        setError('Network error. Server did not respond.');
+      } else {
+        setError(`Error: ${err.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     // Only fetch if authenticated
     if (isAuthenticated) {
       fetchProperties();
@@ -254,7 +261,18 @@ function MyProperties() {
       setLoading(false);
       setError('Please log in to view your properties.');
     }
-  }, [isAuthenticated, currentUser]);
+    
+    // Set up auto-refresh interval (every 30 seconds)
+    const intervalId = setInterval(() => {
+      if (isAuthenticated) {
+        console.log("Auto-refreshing properties data...");
+        fetchProperties();
+      }
+    }, 30000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated, currentUser, refreshKey]);
 
   const handleCreateProperty = () => {
     navigate('/create-property');
@@ -262,6 +280,14 @@ function MyProperties() {
 
   const handleViewProperty = (propertyId) => {
     navigate(`/property/${propertyId}`);
+  };
+
+  const handleRefresh = () => {
+    console.log("Manual refresh triggered");
+    setLoading(true);
+    setError(null);
+    fetchProperties(); // Directly call fetchProperties for immediate refresh
+    setRefreshKey(prevKey => prevKey + 1); // Also update refreshKey to trigger useEffect
   };
 
   const handleRetry = () => {
@@ -299,7 +325,15 @@ function MyProperties() {
       <Title>My Properties</Title>
       <Subtitle>Manage your properties and view their verification status</Subtitle>
       
-      <Button onClick={handleCreateProperty}>Create New Property</Button>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <Button onClick={handleCreateProperty}>Create New Property</Button>
+        <Button onClick={handleRefresh} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh Properties'}
+        </Button>
+        <Button onClick={() => navigate('/my-listings')}>
+          View My Listings
+        </Button>
+      </div>
       
       {properties.length === 0 ? (
         <EmptyState>
@@ -331,8 +365,13 @@ function MyProperties() {
                    property.verification_status === 'pending' ? 'Pending Verification' : 
                    property.verification_status === 'rejected' ? 'Rejected' : 'Pending Verification'}
                 </StatusBadge>
-                <div style={{ marginTop: '15px' }}>
+                <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
                   <Button onClick={() => handleViewProperty(property.id)}>View Details</Button>
+                  {property.verification_status === 'approved' && (
+                    <Button onClick={() => navigate(`/create-property-listing/${property.id}`)}>
+                      List Property
+                    </Button>
+                  )}
                 </div>
               </PropertyContent>
             </PropertyCard>
