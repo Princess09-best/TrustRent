@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import styled from 'styled-components';
 import { useAuth } from './context/AuthContext';
+import { getMediaUrl, handleImageError } from './utils/mediaHelpers';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -44,11 +45,16 @@ const PropertyCard = styled.div`
   }
 `;
 
-const PropertyImage = styled.div`
+const PropertyImageContainer = styled.div`
   height: 200px;
-  background-image: url(${props => props.src ? props.src : '/default-property.jpg'});
-  background-size: cover;
-  background-position: center;
+  overflow: hidden;
+`;
+
+const PropertyImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 `;
 
 const PropertyContent = styled.div`
@@ -59,6 +65,17 @@ const PropertyTitle = styled.h3`
   font-size: 1.2rem;
   margin-bottom: 10px;
   color: ${props => props.theme.colors.text};
+`;
+
+const PropertyDescription = styled.p`
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  color: ${props => props.theme.colors.text};
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const PropertyDetails = styled.div`
@@ -195,6 +212,20 @@ function MyProperties() {
         
         // Check if the response is an array
         if (Array.isArray(response.data)) {
+          // Add detailed logs to check image URLs
+          response.data.forEach(property => {
+            console.log(`Property ${property.id} raw image URL:`, property.image_url);
+            console.log(`Property ${property.id} image URL type:`, typeof property.image_url);
+            
+            // Convert image URL to absolute URL
+            if (property.image_url) {
+              const originalUrl = property.image_url;
+              property.image_url = getMediaUrl(property.image_url);
+              console.log(`Converted image URL from ${originalUrl} to ${property.image_url}`);
+            } else {
+              console.log(`No image URL for property ${property.id}, using default`);
+            }
+          });
           setProperties(response.data);
         } else {
           console.error('Unexpected response format:', response.data);
@@ -280,9 +311,16 @@ function MyProperties() {
         <PropertyGrid>
           {properties.map(property => (
             <PropertyCard key={property.id}>
-              <PropertyImage src={property.image_url || '/default-property.jpg'} />
+              <PropertyImageContainer>
+                <PropertyImage 
+                  src={property.image_url || '/default-property.jpg'} 
+                  alt={property.title}
+                  onError={handleImageError}
+                />
+              </PropertyImageContainer>
               <PropertyContent>
                 <PropertyTitle>{property.title}</PropertyTitle>
+                <PropertyDescription>{property.description || 'No description available.'}</PropertyDescription>
                 <PropertyDetails>
                   <PropertyDetail><strong>Type:</strong> {property.property_type}</PropertyDetail>
                   <PropertyDetail><strong>Location:</strong> {property.location}</PropertyDetail>

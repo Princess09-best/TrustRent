@@ -1774,6 +1774,17 @@ def get_user_properties(request):
                 image_result = cursor.fetchone()
                 image_url = image_result[0] if image_result else None
                 
+                # Print image URL for debugging
+                print(f"Property {property_id} raw image path: {image_url}")
+                
+                # Add media URL prefix if needed
+                if image_url:
+                    from django.conf import settings
+                    # Check if MEDIA_URL needs to be prepended (if not already included)
+                    if not image_url.startswith(('http://', 'https://', settings.MEDIA_URL)):
+                        image_url = f"{settings.MEDIA_URL}{image_url}"
+                        print(f"Property {property_id} adjusted image URL: {image_url}")
+                
                 # Get document count for this property
                 cursor.execute("""
                     SELECT COUNT(*)

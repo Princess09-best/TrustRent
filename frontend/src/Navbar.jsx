@@ -110,6 +110,8 @@ const Navbar = ({ devMode = false, devRole = null }) => {
 
   // Render different links based on user role
   const renderRoleBasedLinks = () => {
+    console.log("Current role in Navbar:", role);
+    
     if (role === 'admin' || role === 'sys_admin') {
       return (
         <>
@@ -120,9 +122,22 @@ const Navbar = ({ devMode = false, devRole = null }) => {
       );
     }
     
-    if (role === 'land_rep') {
+    if (role === 'land_rep' || role === 'land_commission_rep') {
       return (
-        <NavLink to="/land-rep/manage-properties">Manage Properties</NavLink>
+        <div 
+          onClick={() => navigate('/land-rep/manage-properties')} 
+          style={{ 
+            cursor: 'pointer',
+            color: '#333',
+            textDecoration: 'none',
+            fontWeight: 500,
+            transition: 'color 0.3s'
+          }}
+          onMouseOver={(e) => e.target.style.color = '#008080'}
+          onMouseOut={(e) => e.target.style.color = '#333'}
+        >
+          Manage Properties
+        </div>
       );
     }
     

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Register from './Register';
 import Login from './Login';
 import VerificationPending from './VerificationPending';
@@ -20,6 +20,18 @@ import styled from 'styled-components';
 import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Simple test route component
+const TestRoute = () => {
+  const navigate = useNavigate();
+  return (
+    <div style={{ padding: '50px', textAlign: 'center' }}>
+      <h1>Test Route</h1>
+      <p>If you can see this, routing is working correctly!</p>
+      <button onClick={() => navigate('/dashboard')}>Go to Dashboard</button>
+    </div>
+  );
+};
+
 const AppContainer = styled.div`
   min-height: 100vh;
   display: flex;
@@ -38,7 +50,7 @@ const ContentContainer = styled.div`
 `;
 
 // DEVELOPMENT MODE - Set to false for production
-const isDevelopment = true;
+const isDevelopment = false;
 
 // NavbarWrapper to handle navbar visibility
 const NavbarWrapper = ({ devMode, devRole }) => {
@@ -51,7 +63,7 @@ const NavbarWrapper = ({ devMode, devRole }) => {
 function App() {
   // For development, we can set a mock user role
   const [devRole, setDevRole] = useState('property_owner');
-
+  
   return (
     <AuthProvider>
       <Router>
@@ -112,7 +124,7 @@ function App() {
               
               {/* Land Representative Routes */}
               <Route path="/land-rep/manage-properties" element={
-                <ProtectedRoute requiredRoles={['land_rep', 'admin', 'sys_admin']}>
+                <ProtectedRoute requiredRoles={['land_rep', 'land_commission_rep', 'admin', 'sys_admin']}>
                   <LandRepManageProperties />
                 </ProtectedRoute>
               } />
@@ -153,6 +165,11 @@ function App() {
                 <ProtectedRoute>
                   <RentalAgreementDetails />
                 </ProtectedRoute>
+              } />
+              
+              {/* Test route to verify routing */}
+              <Route path="/test-route" element={
+                <TestRoute />
               } />
               
               {/* Catch all other routes and redirect to dashboard for authenticated users, otherwise to landing page */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from './context/AuthContext';
 
@@ -84,7 +84,7 @@ const CardsContainer = styled.div`
   margin-bottom: 40px;
 `;
 
-const Card = styled(Link)`
+const Card = styled.div`
   display: flex;
   flex-direction: column;
   padding: 30px;
@@ -265,6 +265,8 @@ function Dashboard({ devMode = false, devRole = null }) {
   const renderRoleBasedFeatures = () => {
     // Use the role from the dev mode or from the authenticated user
     const role = devMode ? devRole : userRole;
+    
+    console.log("Current role in Dashboard:", role);
 
     if (role === 'admin' || role === 'sys_admin') {
       // Admin dashboard content
@@ -277,25 +279,25 @@ function Dashboard({ devMode = false, devRole = null }) {
             <DashboardMainContent>
               <SectionTitle>Administration</SectionTitle>
               <CardsContainer>
-                <Card to="/admin/verify-users">
+                <Card onClick={() => navigate('/admin/verify-users')}>
                   <CardTitle>Verify Users</CardTitle>
                   <CardDescription>
                     Review and approve new user registration requests
                   </CardDescription>
                 </Card>
-                <Card to="/admin/create-account">
+                <Card onClick={() => navigate('/admin/create-account')}>
                   <CardTitle>Create Admin Account</CardTitle>
                   <CardDescription>
                     Create new admin or land representative accounts
                   </CardDescription>
                 </Card>
-                <Card to="/rental-agreements">
+                <Card onClick={() => navigate('/rental-agreements')}>
                   <CardTitle>View Agreements</CardTitle>
                   <CardDescription>
                     Browse all rental agreements in the system
                   </CardDescription>
                 </Card>
-                <Card to="/admin/blockchain-verification">
+                <Card onClick={() => navigate('/admin/blockchain-verification')}>
                   <CardTitle>Blockchain Verification</CardTitle>
                   <CardDescription>
                     Verify the integrity of the property blockchain
@@ -330,14 +332,14 @@ function Dashboard({ devMode = false, devRole = null }) {
       );
     }
     
-    if (role === 'land_rep') {
+    if (role === 'land_rep' || role === 'land_commission_rep') {
       return (
         <>
           <Title>Land Representative Dashboard</Title>
           <Subtitle>Verify properties and ensure compliance with regulations</Subtitle>
           
           <CardsContainer>
-            <Card to="/land-rep/manage-properties">
+            <Card onClick={() => navigate('/land-rep/manage-properties')}>
               <CardTitle>Manage Properties</CardTitle>
               <CardDescription>
                 Review, verify, and manage property listings
@@ -377,31 +379,31 @@ function Dashboard({ devMode = false, devRole = null }) {
             <DashboardMainContent>
               <SectionTitle>Quick Actions</SectionTitle>
               <CardsContainer>
-                <Card to="/create-property">
+                <Card onClick={() => navigate('/create-property')}>
                   <CardTitle>Create Property</CardTitle>
                   <CardDescription>
                     List a new property for rent
                   </CardDescription>
                 </Card>
-                <Card to="/my-properties">
+                <Card onClick={() => navigate('/my-properties')}>
                   <CardTitle>My Properties</CardTitle>
                   <CardDescription>
                     View and manage your property listings
                   </CardDescription>
                 </Card>
-                <Card to="/rental-agreements">
+                <Card onClick={() => navigate('/rental-agreements')}>
                   <CardTitle>Rental Agreements</CardTitle>
                   <CardDescription>
                     View and manage your rental agreements
                   </CardDescription>
                 </Card>
-                <Card to="/document-requests">
+                <Card onClick={() => navigate('/document-requests')}>
                   <CardTitle>Document Requests</CardTitle>
                   <CardDescription>
                     Manage document access requests from property seekers
                   </CardDescription>
                 </Card>
-                <Card to="/property-transfers">
+                <Card onClick={() => navigate('/property-transfers')}>
                   <CardTitle>Property Transfers</CardTitle>
                   <CardDescription>
                     View and manage property ownership transfers
@@ -451,7 +453,7 @@ function Dashboard({ devMode = false, devRole = null }) {
           <Subtitle>Find properties and manage your rental agreements</Subtitle>
           
           <CardsContainer>
-            <Card to="/rental-agreements">
+            <Card onClick={() => navigate('/rental-agreements')}>
               <CardTitle>Rental Agreements</CardTitle>
               <CardDescription>
                 View and manage your rental agreements
