@@ -394,8 +394,9 @@ class SmartContract(models.Model):
         """Execute ownership verification logic"""
         try:
             # Get the latest block for this property
+            numeric_property_id = PropertyLedger._extract_property_number(self.property_id)
             latest_block = Block.objects.filter(
-                property_id=str(self.property_id)
+                property_id=str(numeric_property_id)
             ).order_by('-block_number').first()
 
             if not latest_block:

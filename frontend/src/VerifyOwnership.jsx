@@ -266,8 +266,12 @@ function VerifyOwnership() {
       
       console.log('Verification status:', statusResponse.data);
       
-      setVerificationStatus(statusResponse.data.details);
-      setVerificationResult(statusResponse.data.details.verification_data);
+      if (statusResponse.data && statusResponse.data.details) {
+        setVerificationStatus(statusResponse.data.details);
+        setVerificationResult(statusResponse.data.details.verification_data);
+      } else {
+        setError('Failed to get verification status. Please try again or check status later.');
+      }
       
     } catch (err) {
       console.error('Error verifying ownership:', err);
@@ -286,6 +290,7 @@ function VerifyOwnership() {
     
     try {
       setLoading(true);
+      setError('');
       
       const token = localStorage.getItem('token');
       if (!token) {
@@ -301,8 +306,12 @@ function VerifyOwnership() {
       
       console.log('Updated verification status:', response.data);
       
-      setVerificationStatus(response.data.details);
-      setVerificationResult(response.data.details.verification_data);
+      if (response.data && response.data.details) {
+        setVerificationStatus(response.data.details);
+        setVerificationResult(response.data.details.verification_data);
+      } else {
+        setError('Failed to get verification status. Please try again.');
+      }
       
     } catch (err) {
       console.error('Error checking verification status:', err);

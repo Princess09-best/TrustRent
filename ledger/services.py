@@ -143,17 +143,31 @@ class SmartContractService:
                 contract.save()
                 return False, "Verification request has expired"
             
+            # Check if contract is already in final state
+            if contract.status in ['verified', 'rejected']:
+                # Return the existing verification data
+                return True, {
+                    'verification_id': contract.contract_id,
+                    'status': contract.status,
+                    'is_owner': contract.verification_data.get('is_owner', False),
+                    'message': 'Verification already completed',
+                    'verified_at': contract.executed_at.isoformat() if contract.executed_at else None
+                }
+            
             # Execute the contract
             success, result = contract.auto_execute()
             
             if not success:
                 return False, result
             
+            # Refresh contract data after execution
+            contract.refresh_from_db()
+            
             return True, {
                 'verification_id': contract.contract_id,
                 'status': contract.status,
                 'is_owner': contract.verification_data.get('is_owner', False),
-                'message': result.get('message', 'Verification completed'),
+                'message': 'Verification completed',
                 'verified_at': contract.executed_at.isoformat() if contract.executed_at else None
             }
             

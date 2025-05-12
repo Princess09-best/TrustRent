@@ -351,8 +351,14 @@ def get_verification_status(request, verification_id):
         
         if not success:
             return Response({'error': result}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Format the response with the 'details' key that the frontend expects
+        response_data = {
+            'status': 'success',
+            'details': result
+        }
             
-        return Response(result, status=status.HTTP_200_OK)
+        return Response(response_data, status=status.HTTP_200_OK)
             
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
