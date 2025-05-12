@@ -222,7 +222,8 @@ def create_ownership_verification(request):
         # Get claimed owner identification details
         owner_details = {
             'id_type': request.data.get('owner_id_type'), 
-            'id_value': request.data.get('owner_id_value'), 
+            'id_value': request.data.get('owner_id_value'),
+            'name': request.data.get('owner_name')  # Make sure we get the name
         }
         
         # Validate required fields
@@ -235,6 +236,10 @@ def create_ownership_verification(request):
             return Response({
                 'error': 'Missing owner details. Required: id_type, id_value, and name'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Debug logs
+        print(f"DEBUG: Property details: {property_details}")
+        print(f"DEBUG: Owner details: {owner_details}")
 
         # First, try to find the property and owner IDs from the provided details
         with connections['core'].cursor() as cursor:
@@ -259,28 +264,37 @@ def create_ownership_verification(request):
                 }, status=status.HTTP_404_NOT_FOUND)
                 
             property_id = result[0]
+            print(f"DEBUG: Found property with ID: {property_id}")
             
             # Find the claimed owner
             cursor.execute("""
-                SELECT u.id
+                SELECT u.id, CONCAT(u.firstname, ' ', u.lastname) as full_name
                 FROM core_user u
                 WHERE u.id_type = %s
                 AND u.id_value = %s
-                AND CONCAT(u.firstname, ' ', u.lastname) = %s
                 AND u.role = 'property_owner'
             """, [
                 owner_details['id_type'],
-                owner_details['id_value'],
-                owner_details['name']
+                owner_details['id_value']
             ])
             
             result = cursor.fetchone()
             if not result:
                 return Response({
-                    'error': 'Claimed owner not found with the provided details'
+                    'error': 'Claimed owner not found with the provided ID details'
                 }, status=status.HTTP_404_NOT_FOUND)
                 
             claimed_owner_id = result[0]
+            found_owner_name = result[1]
+            
+            print(f"DEBUG: Found owner with ID: {claimed_owner_id}, Name: {found_owner_name}")
+            
+            # Verify name matches if provided
+            if owner_details['name'] and owner_details['name'].lower() != found_owner_name.lower():
+                print(f"DEBUG: Name mismatch. Expected: {owner_details['name']}, Found: {found_owner_name}")
+                return Response({
+                    'error': 'The provided owner name does not match the name associated with the ID'
+                }, status=status.HTTP_400_BAD_REQUEST)
         
         # Now create the verification request using the found IDs
         success, message, verification_id = SmartContractService.create_verification_request(
@@ -303,12 +317,12 @@ def create_ownership_verification(request):
                     'type': property_details['property_type']
                 },
                 'claimed_owner': {
-                    'name': owner_details['name'],
+                    'name': found_owner_name,
                     'id_type': owner_details['id_type'],
                     'id_value': owner_details['id_value']
                 }
             }
-        }, status=status.HTTP_201_CREATED)
+        })
             
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

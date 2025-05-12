@@ -9,6 +9,7 @@ import CreateProperty from './OwnerCreateProperty';
 import MyProperties from './MyProperties';
 import MyListings from './MyListings';
 import BrowseProperties from './BrowseProperties';
+import VerifyOwnership from './VerifyOwnership';
 import LandRepManageProperties from './LandRepManageProperties';
 import PropertyDetails from './PropertyDetails';
 import RentalAgreementCreate from './RentalAgreementCreate';
@@ -152,7 +153,7 @@ function App() {
               } />
               
               <Route path="/browse-properties" element={
-                <ProtectedRoute requiredRoles={['property_seeker']}>
+                <ProtectedRoute>
                   <BrowseProperties />
                 </ProtectedRoute>
               } />
@@ -160,6 +161,12 @@ function App() {
               <Route path="/property/:propertyId" element={
                 <ProtectedRoute>
                   <PropertyDetails />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/verify-ownership" element={
+                <ProtectedRoute>
+                  <VerifyOwnership />
                 </ProtectedRoute>
               } />
               

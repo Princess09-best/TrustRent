@@ -465,6 +465,12 @@ function Dashboard({ devMode = false, devRole = null }) {
                 Find and view available properties
               </CardDescription>
             </Card>
+            <Card onClick={() => navigate('/verify-ownership')}>
+              <CardTitle>Verify Property Ownership</CardTitle>
+              <CardDescription>
+                Use blockchain to verify property ownership claims
+              </CardDescription>
+            </Card>
             <Card onClick={() => navigate('/rental-agreements')}>
               <CardTitle>Rental Agreements</CardTitle>
               <CardDescription>

@@ -45,12 +45,15 @@ def create_property_listing(request):
         with connections['core'].cursor() as cursor:
             cursor.execute("SELECT property_id FROM core_userproperty WHERE id = %s", [user_property_id])
             property_id_result = cursor.fetchone()
-            property_id = int(property_id_result[0]) if property_id_result else None
+            if not property_id_result:
+                return JsonResponse({'error': 'User property not found'}, status=404)
+            property_id = int(property_id_result[0])
+            print(f"DEBUG: Retrieved property_id={property_id} from user_property_id={user_property_id}")
 
         # Verify property exists and is verified
         with connections['core'].cursor() as cursor:
             cursor.execute("""
-                SELECT p.id, p.title 
+                SELECT p.id, p.title, p.status
                 FROM core_property p
                 JOIN core_userproperty up ON p.id = up.property_id
                 WHERE up.id = %s AND up.is_verified = true AND up.is_active = true
@@ -60,8 +63,14 @@ def create_property_listing(request):
             if not result:
                 return JsonResponse({'error': 'Property not found or not verified'}, status=404)
             
-            # Just using the title is enough since we've already verified the property exists
-            property_title = result[1]
+            # Get property details
+            db_property_id, property_title, current_status = result
+            print(f"DEBUG: Property found - ID: {db_property_id}, Title: {property_title}, Current Status: {current_status}")
+            
+            # Ensure we're using the correct property ID
+            if property_id != db_property_id:
+                print(f"WARNING: Property ID mismatch! From user_property: {property_id}, From property table: {db_property_id}")
+                property_id = db_property_id
 
         # Check if the property has an active rental agreement
         with connections['ledger'].cursor() as cursor:
@@ -106,11 +115,27 @@ def create_property_listing(request):
 
         # Update property status to 'available'
         with connections['core'].cursor() as cursor:
-            cursor.execute("""
-                UPDATE core_property 
-                SET status = 'available'
-                WHERE id = %s
-            """, [property_id])
+            try:
+                cursor.execute("""
+                    UPDATE core_property 
+                    SET status = 'available'
+                    WHERE id = %s
+                """, [property_id])
+                rows_affected = cursor.rowcount
+                print(f"DEBUG: Updated property status to 'available' for property_id={property_id}, Rows affected: {rows_affected}")
+                
+                # Explicitly commit the transaction
+                connections['core'].commit()
+                print("DEBUG: Transaction committed")
+                
+                # Verify the update was successful
+                cursor.execute("SELECT status FROM core_property WHERE id = %s", [property_id])
+                updated_status = cursor.fetchone()[0]
+                print(f"DEBUG: After update, property status is: {updated_status}")
+            except Exception as e:
+                print(f"ERROR: Failed to update property status: {str(e)}")
+                connections['core'].rollback()
+                raise
 
         # Create response with clean body and listing_id in header
         response = JsonResponse({
@@ -570,13 +595,49 @@ def deactivate_property_listing(request, listing_id):
             result = cursor.fetchone()
             if not result:
                 return JsonResponse({'error': 'Active listing not found'}, status=404)
+                
+            user_property_id = result[0]
+
+            # Get property_id from user_property_id
+            with connections['core'].cursor() as cursor:
+                cursor.execute("SELECT property_id FROM core_userproperty WHERE id = %s", [user_property_id])
+                property_id_result = cursor.fetchone()
+                if not property_id_result:
+                    return JsonResponse({'error': 'Property not found'}, status=404)
+                property_id = property_id_result[0]
+                print(f"DEBUG: Retrieved property_id={property_id} from user_property_id={user_property_id}")
 
             # Deactivate the listing
-            cursor.execute("""
-                UPDATE ops_propertylisting 
-                SET is_active = false 
-                WHERE id = %s
-            """, [listing_id])
+            with connections['ops'].cursor() as cursor:
+                cursor.execute("""
+                    UPDATE ops_propertylisting 
+                    SET is_active = false 
+                    WHERE id = %s
+                """, [listing_id])
+
+            # Update property status to 'unlisted'
+            with connections['core'].cursor() as cursor:
+                try:
+                    cursor.execute("""
+                        UPDATE core_property 
+                        SET status = 'unlisted'
+                        WHERE id = %s
+                    """, [property_id])
+                    rows_affected = cursor.rowcount
+                    print(f"DEBUG: Updated property status to 'unlisted' for property_id={property_id}, Rows affected: {rows_affected}")
+                    
+                    # Explicitly commit the transaction
+                    connections['core'].commit()
+                    print("DEBUG: Transaction committed")
+                    
+                    # Verify the update was successful
+                    cursor.execute("SELECT status FROM core_property WHERE id = %s", [property_id])
+                    updated_status = cursor.fetchone()[0]
+                    print(f"DEBUG: After update, property status is: {updated_status}")
+                except Exception as e:
+                    print(f"ERROR: Failed to update property status: {str(e)}")
+                    connections['core'].rollback()
+                    raise
 
         return JsonResponse({
             'message': 'Property listing deactivated successfully'
@@ -617,25 +678,59 @@ def reactivate_property_listing(request, listing_id):
                     'error': 'Cannot reactivate: Another active listing exists for this property'
                 }, status=400)
 
-            # Reactivate the listing
-            cursor.execute("""
-                UPDATE ops_propertylisting 
-                SET is_active = true 
-                WHERE id = %s
-                RETURNING id, price, listing_type
-            """, [listing_id])
+            # Get property_id from user_property_id
+            with connections['core'].cursor() as cursor:
+                cursor.execute("SELECT property_id FROM core_userproperty WHERE id = %s", [user_property_id])
+                property_id_result = cursor.fetchone()
+                if not property_id_result:
+                    return JsonResponse({'error': 'Property not found'}, status=404)
+                property_id = property_id_result[0]
+                print(f"DEBUG: Retrieved property_id={property_id} from user_property_id={user_property_id}")
 
-            listing_data = cursor.fetchone()
-            if listing_data:
-                return JsonResponse({
-                    'message': 'Property listing reactivated successfully',
-                    'is_active': True,
-                    'listing_id': listing_data[0],
-                    'price': float(listing_data[1]),
-                    'listing_type': listing_data[2]
-                })
-            else:
-                return JsonResponse({'error': 'Failed to reactivate listing'}, status=500)
+            # Reactivate the listing
+            with connections['ops'].cursor() as cursor:
+                cursor.execute("""
+                    UPDATE ops_propertylisting 
+                    SET is_active = true 
+                    WHERE id = %s
+                    RETURNING id, price, listing_type
+                """, [listing_id])
+                
+                listing_data = cursor.fetchone()
+                if not listing_data:
+                    return JsonResponse({'error': 'Failed to reactivate listing'}, status=500)
+
+            # Update property status to 'available'
+            with connections['core'].cursor() as cursor:
+                try:
+                    cursor.execute("""
+                        UPDATE core_property 
+                        SET status = 'available'
+                        WHERE id = %s
+                    """, [property_id])
+                    rows_affected = cursor.rowcount
+                    print(f"DEBUG: Updated property status to 'available' for property_id={property_id}, Rows affected: {rows_affected}")
+                    
+                    # Explicitly commit the transaction
+                    connections['core'].commit()
+                    print("DEBUG: Transaction committed")
+                    
+                    # Verify the update was successful
+                    cursor.execute("SELECT status FROM core_property WHERE id = %s", [property_id])
+                    updated_status = cursor.fetchone()[0]
+                    print(f"DEBUG: After update, property status is: {updated_status}")
+                except Exception as e:
+                    print(f"ERROR: Failed to update property status: {str(e)}")
+                    connections['core'].rollback()
+                    raise
+
+            return JsonResponse({
+                'message': 'Property listing reactivated successfully',
+                'is_active': True,
+                'listing_id': listing_data[0],
+                'price': float(listing_data[1]),
+                'listing_type': listing_data[2]
+            })
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
