@@ -162,7 +162,7 @@ const LoadingSpinner = styled.div`
   color: ${props => props.theme.colors.primary};
 `;
 
-function Dashboard({ devMode = false, devRole = null }) {
+function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -175,51 +175,6 @@ function Dashboard({ devMode = false, devRole = null }) {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      // If in development mode, create a mock user
-      if (devMode) {
-        setUser({
-          first_name: 'Dev',
-          last_name: 'User',
-          email: 'dev@example.com',
-          role: devRole || 'property_owner',
-          is_verified: true
-        });
-        
-        // Set mock stats based on role
-        if (devRole === 'admin') {
-          setStats({
-            properties: 45,
-            agreements: 28,
-            pendingVerifications: 7,
-            pendingProperties: 12
-          });
-        } else if (devRole === 'land_rep') {
-          setStats({
-            properties: 45,
-            pendingProperties: 12,
-            verifiedProperties: 30,
-            rejectedProperties: 3
-          });
-        } else if (devRole === 'property_owner') {
-          setStats({
-            properties: 5,
-            agreements: 3,
-            pendingAgreements: 1,
-            activeAgreements: 2
-          });
-        } else if (devRole === 'property_seeker') {
-          setStats({
-            agreements: 2,
-            pendingAgreements: 1,
-            activeAgreements: 1,
-            propertiesViewed: 15
-          });
-        }
-        
-        setLoading(false);
-        return;
-      }
-
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -227,17 +182,16 @@ function Dashboard({ devMode = false, devRole = null }) {
           return;
         }
 
-        // Fetch user profile from the API
+        // Fetch user profile
         const response = await fetch('/api/user/profile/', {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           }
         });
 
         if (!response.ok) {
-          if (response.status === 403) {
-            // Token expired or invalid
+          // If unauthorized, clear token and redirect to login
+          if (response.status === 401) {
             localStorage.removeItem('token');
             navigate('/login');
             return;
@@ -245,31 +199,69 @@ function Dashboard({ devMode = false, devRole = null }) {
           throw new Error('Failed to fetch user profile');
         }
 
-        const profileData = await response.json();
-        setUser({
-          first_name: profileData.first_name,
-          last_name: profileData.last_name,
-          email: profileData.email,
-          role: profileData.role,
-          is_verified: profileData.is_verified
-        });
-        
-        // Set stats from the profile data
-        if (profileData.stats) {
-          setStats(profileData.stats);
-        }
-        
-        setLoading(false);
+        const userData = await response.json();
+        setUser(userData);
+
+        // Fetch statistics based on user role
+        await fetchRoleBasedStats(userData.role, token);
       } catch (error) {
         console.error('Error fetching user profile:', error);
-        // If there's an error, redirect to login
+        // On error, redirect to login
         localStorage.removeItem('token');
         navigate('/login');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [navigate, devMode, devRole]);
+  }, [navigate]);
+
+  const fetchRoleBasedStats = async (role, token) => {
+    try {
+      // Different endpoints based on role
+      let endpoint = '';
+      
+      switch(role) {
+        case 'admin':
+          endpoint = '/api/admin/stats/';
+          break;
+        case 'land_rep':
+          endpoint = '/api/land-rep/stats/';
+          break;
+        case 'property_owner':
+          endpoint = '/api/property/owner-stats/';
+          break;
+        case 'property_seeker':
+          endpoint = '/api/property/seeker-stats/';
+          break;
+        default:
+          return;
+      }
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch statistics');
+      }
+      
+      const statsData = await response.json();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      // Set default stats if fetching fails
+      setStats({
+        properties: 0,
+        agreements: 0,
+        pendingVerifications: 0,
+        pendingProperties: 0
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -279,7 +271,7 @@ function Dashboard({ devMode = false, devRole = null }) {
     );
   }
 
-  if (!user && !devMode) {
+  if (!user) {
     navigate('/login');
     return null;
   }

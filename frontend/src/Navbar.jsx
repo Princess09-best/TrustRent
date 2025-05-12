@@ -87,7 +87,7 @@ const LogoutButton = styled.button`
   }
 `;
 
-function Navbar({ devMode = false, devRole = null }) {
+function Navbar() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -95,23 +95,10 @@ function Navbar({ devMode = false, devRole = null }) {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      // If in development mode, create a mock user
-      if (devMode) {
-        setUser({
-          first_name: 'Dev',
-          last_name: 'User',
-          email: 'dev@example.com',
-          role: devRole || 'property_owner',
-          is_verified: true
-        });
-        setLoading(false);
-        return;
-      }
-
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          setLoading(false);
+          navigate('/login');
           return;
         }
 
@@ -122,24 +109,120 @@ function Navbar({ devMode = false, devRole = null }) {
         });
 
         if (!response.ok) {
+          // If unauthorized, clear token and redirect to login
+          if (response.status === 401) {
+            localStorage.removeItem('token');
+            navigate('/login');
+            return;
+          }
           throw new Error('Failed to fetch user profile');
         }
 
         const userData = await response.json();
         setUser(userData);
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching user profile:', error);
+        // On error, redirect to login
+        localStorage.removeItem('token');
+        navigate('/login');
+      } finally {
         setLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [devMode, devRole]);
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/');
+  };
+
+  // Determine which links to show based on user role
+  const renderNavLinks = () => {
+    if (loading || !user) return null;
+
+    const isActive = (path) => location.pathname === path;
+    
+    // Common links for all users
+    const links = [
+      <NavLink key="dashboard" to="/dashboard" active={isActive('/dashboard')}>
+        Dashboard
+      </NavLink>
+    ];
+
+    // Role-specific links
+    switch(user.role) {
+      case 'admin':
+        links.push(
+          <NavLink key="verify-users" to="/admin/verify-users" active={isActive('/admin/verify-users')}>
+            Verify Users
+          </NavLink>,
+          <NavLink key="create-account" to="/admin/create-account" active={isActive('/admin/create-account')}>
+            Create Account
+          </NavLink>,
+          <NavLink key="blockchain" to="/admin/blockchain-verification" active={isActive('/admin/blockchain-verification')}>
+            Blockchain
+          </NavLink>
+        );
+        break;
+      case 'land_rep':
+        links.push(
+          <NavLink key="manage-properties" to="/land-rep/manage-properties" active={isActive('/land-rep/manage-properties')}>
+            Manage Properties
+          </NavLink>
+        );
+        break;
+      case 'property_owner':
+        links.push(
+          <NavLink key="create-property" to="/create-property" active={isActive('/create-property')}>
+            Create Property
+          </NavLink>,
+          <NavLink key="rental-agreements" to="/rental-agreements" active={isActive('/rental-agreements')}>
+            Rental Agreements
+          </NavLink>
+        );
+        break;
+      case 'property_seeker':
+        links.push(
+          <NavLink key="properties" to="/properties" active={isActive('/properties')}>
+            Find Properties
+          </NavLink>,
+          <NavLink key="rental-agreements" to="/rental-agreements" active={isActive('/rental-agreements')}>
+            Rental Agreements
+          </NavLink>
+        );
+        break;
+      default:
+        break;
+    }
+
+    return links;
+  };
 
   return (
     <NavbarContainer>
-      {/* Rest of the component code remains unchanged */}
+      <Logo>
+        <Link to="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
+          TrustRent
+        </Link>
+      </Logo>
+      
+      <NavLinks>
+        {renderNavLinks()}
+      </NavLinks>
+      
+      <UserSection>
+        {!loading && user && (
+          <>
+            <UserInfo>
+              <UserName>{user.first_name} {user.last_name}</UserName>
+              <UserRole>{user.role.replace('_', ' ')}</UserRole>
+            </UserInfo>
+            <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
+          </>
+        )}
+      </UserSection>
     </NavbarContainer>
   );
 }

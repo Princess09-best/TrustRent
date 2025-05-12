@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Register from './Register';
 import Login from './Login';
 import VerificationPending from './VerificationPending';
@@ -14,6 +14,7 @@ import RentalAgreementList from './RentalAgreementList';
 import BlockchainVerification from './BlockchainVerification';
 import Dashboard from './Dashboard';
 import Navbar from './Navbar';
+import LandingPage from './LandingPage';
 import styled from 'styled-components';
 
 const AppContainer = styled.div`
@@ -33,35 +34,18 @@ const ContentContainer = styled.div`
   align-items: center;
 `;
 
-// DEVELOPMENT MODE - Set to false for production
-const isDevelopment = true;
-
 function App() {
-  // For development, we can set a mock user role
-  const [devRole, setDevRole] = useState('property_owner');
+  // Check if user is on landing page to hide the navbar
+  const isLandingPage = window.location.pathname === '/';
+  
+  // Check if user is authenticated
+  const isAuthenticated = !!localStorage.getItem('token');
 
   return (
     <Router>
       <AppContainer>
-        {isDevelopment ? (
-          // Development mode with role selector
-          <div style={{ width: '100%', padding: '10px 0', backgroundColor: '#ff6b6b', color: 'white', textAlign: 'center' }}>
-            <span style={{ marginRight: '10px' }}>DEVELOPMENT MODE</span>
-            <select 
-              value={devRole} 
-              onChange={(e) => setDevRole(e.target.value)}
-              style={{ padding: '5px', borderRadius: '4px' }}
-            >
-              <option value="admin">Admin</option>
-              <option value="land_rep">Land Representative</option>
-              <option value="property_owner">Property Owner</option>
-              <option value="property_seeker">Property Seeker</option>
-            </select>
-          </div>
-        ) : null}
-        
-        {/* Only show navbar if in dev mode or authenticated in production */}
-        <Navbar devMode={isDevelopment} devRole={devRole} />
+        {/* Only show navbar if not on landing page AND authenticated */}
+        {!isLandingPage && isAuthenticated && <Navbar />}
         
         <ContentContainer>
           <Routes>
@@ -69,27 +53,58 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/verification-pending" element={<VerificationPending />} />
             
-            {/* Dashboard */}
-            <Route path="/dashboard" element={<Dashboard devMode={isDevelopment} devRole={devRole} />} />
+            {/* Dashboard - Protected Route */}
+            <Route 
+              path="/dashboard" 
+              element={isAuthenticated ? <Dashboard /> : <Login />} 
+            />
             
-            {/* Admin Routes */}
-            <Route path="/admin/verify-users" element={<AdminVerifyUsers />} />
-            <Route path="/admin/create-account" element={<AdminCreateAccount />} />
-            <Route path="/admin/blockchain-verification" element={<BlockchainVerification />} />
+            {/* Admin Routes - Protected */}
+            <Route 
+              path="/admin/verify-users" 
+              element={isAuthenticated ? <AdminVerifyUsers /> : <Login />} 
+            />
+            <Route 
+              path="/admin/create-account" 
+              element={isAuthenticated ? <AdminCreateAccount /> : <Login />} 
+            />
+            <Route 
+              path="/admin/blockchain-verification" 
+              element={isAuthenticated ? <BlockchainVerification /> : <Login />} 
+            />
             
-            {/* Land Representative Routes */}
-            <Route path="/land-rep/manage-properties" element={<LandRepManageProperties />} />
+            {/* Land Representative Routes - Protected */}
+            <Route 
+              path="/land-rep/manage-properties" 
+              element={isAuthenticated ? <LandRepManageProperties /> : <Login />} 
+            />
             
-            {/* Property Routes */}
-            <Route path="/create-property" element={<CreateProperty />} />
-            <Route path="/property/:propertyId" element={<PropertyDetails />} />
+            {/* Property Routes - Protected */}
+            <Route 
+              path="/create-property" 
+              element={isAuthenticated ? <CreateProperty /> : <Login />} 
+            />
+            <Route 
+              path="/property/:propertyId" 
+              element={isAuthenticated ? <PropertyDetails /> : <Login />} 
+            />
             
-            {/* Rental Agreement Routes */}
-            <Route path="/rental-agreements" element={<RentalAgreementList />} />
-            <Route path="/rental-agreements/create" element={<RentalAgreementCreate />} />
-            <Route path="/rental-agreements/:agreementId" element={<RentalAgreementDetails />} />
+            {/* Rental Agreement Routes - Protected */}
+            <Route 
+              path="/rental-agreements" 
+              element={isAuthenticated ? <RentalAgreementList /> : <Login />} 
+            />
+            <Route 
+              path="/rental-agreements/create" 
+              element={isAuthenticated ? <RentalAgreementCreate /> : <Login />} 
+            />
+            <Route 
+              path="/rental-agreements/:agreementId" 
+              element={isAuthenticated ? <RentalAgreementDetails /> : <Login />} 
+            />
             
-            <Route path="/" element={<Navigate to={isDevelopment ? "/dashboard" : "/login"} replace />} />
+            {/* Landing Page as Homepage */}
+            <Route path="/" element={<LandingPage />} />
           </Routes>
         </ContentContainer>
       </AppContainer>
