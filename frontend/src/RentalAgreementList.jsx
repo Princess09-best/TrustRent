@@ -150,6 +150,21 @@ const LoadingSpinner = styled.div`
   min-height: 300px;
 `;
 
+const ActionButton = styled.button`
+  padding: 5px 10px;
+  background-color: ${props => props.theme.colors.primary};
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #006666;
+  }
+`;
+
 function RentalAgreementList() {
   const navigate = useNavigate();
   const [agreements, setAgreements] = useState([]);
@@ -322,6 +337,11 @@ function RentalAgreementList() {
     navigate(`/rental-agreements/${agreementId}`);
   };
 
+  const handleSignClick = (e, agreementId) => {
+    e.stopPropagation(); // Prevent row click
+    navigate(`/rental-agreements/${agreementId}/sign`);
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -353,7 +373,17 @@ function RentalAgreementList() {
       <Header>
         <Title>Rental Agreements</Title>
         {userRole === 'property_owner' && (
-          <Button onClick={handleCreateNew}>Create New</Button>
+          <Button onClick={handleCreateNew} style={{
+            backgroundColor: '#4CAF50',
+            padding: '12px 24px',
+            fontWeight: 'bold',
+            fontSize: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '20px' }}>+</span> Create New Agreement
+          </Button>
         )}
       </Header>
 
@@ -408,7 +438,35 @@ function RentalAgreementList() {
 
       {!loading && agreements.length === 0 ? (
         <EmptyState>
-          {error ? 'Error loading agreements' : 'No rental agreements found matching your filters'}
+          {error ? (
+            'Error loading agreements'
+          ) : (
+            <>
+              <p>No rental agreements found matching your filters</p>
+              {userRole === 'property_owner' && (
+                <Button 
+                  onClick={handleCreateNew}
+                  style={{ 
+                    marginTop: '20px',
+                    backgroundColor: '#4CAF50'
+                  }}
+                >
+                  Create Your First Agreement
+                </Button>
+              )}
+              {userRole === 'property_seeker' && (
+                <Button 
+                  onClick={() => navigate('/browse-properties')}
+                  style={{ 
+                    marginTop: '20px',
+                    backgroundColor: '#4CAF50'
+                  }}
+                >
+                  Browse Properties
+                </Button>
+              )}
+            </>
+          )}
         </EmptyState>
       ) : (
         <Table>
@@ -421,6 +479,7 @@ function RentalAgreementList() {
               <TableHeader>End Date</TableHeader>
               <TableHeader>Monthly Rent</TableHeader>
               <TableHeader>Status</TableHeader>
+              <TableHeader>Action</TableHeader>
             </tr>
           </thead>
           <tbody>
@@ -443,6 +502,30 @@ function RentalAgreementList() {
                   <StatusBadge status={agreement.status}>
                     {agreement.status}
                   </StatusBadge>
+                </TableCell>
+                <TableCell>
+                  {agreement.status === 'PENDING' && (
+                    <ActionButton 
+                      onClick={(e) => handleSignClick(e, agreement.agreement_id)}
+                      style={{
+                        backgroundColor: '#4CAF50',
+                        fontWeight: 'bold',
+                        padding: '8px 15px'
+                      }}
+                    >
+                      Sign Now
+                    </ActionButton>
+                  )}
+                  {agreement.status === 'ACTIVE' && (
+                    <ActionButton 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRowClick(agreement.agreement_id);
+                      }}
+                    >
+                      View Details
+                    </ActionButton>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

@@ -477,6 +477,12 @@ function Dashboard({ devMode = false, devRole = null }) {
                 View and manage your rental agreements
               </CardDescription>
             </Card>
+            <Card onClick={() => navigate('/my-document-requests')}>
+              <CardTitle>Document Requests</CardTitle>
+              <CardDescription>
+                View and manage your document access requests
+              </CardDescription>
+            </Card>
           </CardsContainer>
           
           <StatsContainer>

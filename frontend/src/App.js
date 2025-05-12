@@ -15,11 +15,14 @@ import PropertyDetails from './PropertyDetails';
 import RentalAgreementCreate from './RentalAgreementCreate';
 import RentalAgreementDetails from './RentalAgreementDetails';
 import RentalAgreementList from './RentalAgreementList';
+import RentalAgreementSign from './RentalAgreementSign';
 import BlockchainVerification from './BlockchainVerification';
 import CreatePropertyListing from './CreatePropertyListing';
 import Dashboard from './Dashboard';
 import Navbar from './Navbar';
 import LandingPage from './LandingPage';
+import DocumentRequests from './DocumentRequests';
+import MyDocumentRequests from './MyDocumentRequests';
 import styled from 'styled-components';
 import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -152,6 +155,18 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/document-requests" element={
+                <ProtectedRoute requiredRoles={['property_owner']}>
+                  <DocumentRequests />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/my-document-requests" element={
+                <ProtectedRoute requiredRoles={['property_seeker']}>
+                  <MyDocumentRequests />
+                </ProtectedRoute>
+              } />
+              
               <Route path="/browse-properties" element={
                 <ProtectedRoute>
                   <BrowseProperties />
@@ -193,6 +208,12 @@ function App() {
               <Route path="/rental-agreements/:agreementId" element={
                 <ProtectedRoute>
                   <RentalAgreementDetails />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/rental-agreements/:agreementId/sign" element={
+                <ProtectedRoute>
+                  <RentalAgreementSign />
                 </ProtectedRoute>
               } />
               

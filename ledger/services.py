@@ -1,7 +1,7 @@
 from django.utils import timezone
 import uuid
 from datetime import timedelta
-from .models import Block, PropertyLedger, SmartContract, RentalAgreement
+from .models import Block, PropertyLedger, SmartContract, RentalAgreement, RentalRequest
 from django.db import connections
 
 class SmartContractService:
@@ -610,4 +610,396 @@ class RentalAgreementService:
             }
             
         except Exception as e:
-            return False, str(e) 
+            return False, str(e)
+
+class RentalRequestService:
+    """Service class for managing rental requests"""
+    
+    @classmethod
+    def create_rental_request(cls, property_id, requester_id, start_date, end_date, message=None):
+        """
+        Creates a new rental request from a property seeker
+        """
+        try:
+            # Validate dates
+            if start_date > end_date:
+                return False, "Start date cannot be after end date", None
+                
+            # Check if property exists and is available
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT p.id, p.title, p.status, up.owner_id, up.is_verified
+                    FROM core_property p
+                    JOIN core_userproperty up ON p.id = up.property_id
+                    WHERE p.id = %s AND up.is_active = true
+                """, [property_id])
+                
+                result = cursor.fetchone()
+                if not result:
+                    return False, "Property not found", None
+                
+                property_id_db, property_title, property_status, owner_id, is_verified = result
+                
+                if not is_verified:
+                    return False, "Property ownership has not been verified", None
+                
+                # Check if the property is available
+                if property_status != 'available':
+                    return False, f"Property is not available for rent. Current status: {property_status}", None
+                
+                # Check if there's an active rental agreement for this property
+                active_agreement = RentalAgreement.objects.filter(
+                    property_id=property_id,
+                    status__in=['pending', 'active'],
+                    end_date__gte=timezone.now().date()
+                ).first()
+                
+                if active_agreement:
+                    return False, "Property already has an active rental agreement", None
+                
+                # Check if the requester already has a pending request for this property
+                existing_request = RentalRequest.objects.filter(
+                    property_id=property_id,
+                    requester_id=requester_id,
+                    status='pending'
+                ).first()
+                
+                if existing_request:
+                    return False, "You already have a pending request for this property", None
+            
+            # Generate unique request ID
+            request_id = f"REQ_{uuid.uuid4().hex[:16]}"
+            
+            # Create rental request
+            rental_request = RentalRequest.objects.create(
+                request_id=request_id,
+                property_id=property_id,
+                owner_id=owner_id,
+                requester_id=requester_id,
+                start_date=start_date,
+                end_date=end_date,
+                message=message,
+                status='pending'
+            )
+            
+            return True, "Rental request submitted successfully", request_id
+            
+        except Exception as e:
+            return False, str(e), None
+    
+    @classmethod
+    def get_rental_requests_for_owner(cls, owner_id, status_filter=None):
+        """
+        Get all rental requests for a property owner
+        """
+        try:
+            # Query rental requests
+            requests = RentalRequest.objects.filter(owner_id=owner_id)
+            
+            # Apply status filter if provided
+            if status_filter:
+                requests = requests.filter(status=status_filter)
+            
+            # Convert to list of dicts with property and requester details
+            requests_data = []
+            for req in requests:
+                # Get property details
+                with connections['core'].cursor() as cursor:
+                    cursor.execute("""
+                        SELECT p.title, p.location, p.property_type
+                        FROM core_property p
+                        WHERE p.id = %s
+                    """, [req.property_id])
+                    
+                    prop_result = cursor.fetchone()
+                    if not prop_result:
+                        continue
+                    
+                    property_details = {
+                        'title': prop_result[0],
+                        'location': prop_result[1],
+                        'type': prop_result[2]
+                    }
+                    
+                    # Get requester details
+                    cursor.execute("""
+                        SELECT CONCAT(u.firstname, ' ', u.lastname), u.email, u.phone_number
+                        FROM core_user u
+                        WHERE u.id = %s
+                    """, [req.requester_id])
+                    
+                    requester_result = cursor.fetchone()
+                    if not requester_result:
+                        continue
+                    
+                    requester_details = {
+                        'name': requester_result[0],
+                        'email': requester_result[1],
+                        'phone': requester_result[2]
+                    }
+                
+                requests_data.append({
+                    'request_id': req.request_id,
+                    'property_id': req.property_id,
+                    'property': property_details,
+                    'requester_id': req.requester_id,
+                    'requester': requester_details,
+                    'dates': {
+                        'start_date': req.start_date.isoformat(),
+                        'end_date': req.end_date.isoformat(),
+                        'created_at': req.created_at.isoformat(),
+                        'response_date': req.response_date.isoformat() if req.response_date else None
+                    },
+                    'message': req.message,
+                    'status': req.status,
+                    'response_message': req.response_message,
+                    'agreement_id': req.agreement_id
+                })
+            
+            return True, requests_data
+            
+        except Exception as e:
+            return False, str(e)
+    
+    @classmethod
+    def get_rental_requests_for_requester(cls, requester_id, status_filter=None):
+        """
+        Get all rental requests made by a property seeker
+        """
+        try:
+            # Query rental requests
+            requests = RentalRequest.objects.filter(requester_id=requester_id)
+            
+            # Apply status filter if provided
+            if status_filter:
+                requests = requests.filter(status=status_filter)
+            
+            # Convert to list of dicts with property and owner details
+            requests_data = []
+            for req in requests:
+                # Get property details
+                with connections['core'].cursor() as cursor:
+                    cursor.execute("""
+                        SELECT p.title, p.location, p.property_type
+                        FROM core_property p
+                        WHERE p.id = %s
+                    """, [req.property_id])
+                    
+                    prop_result = cursor.fetchone()
+                    if not prop_result:
+                        continue
+                    
+                    property_details = {
+                        'title': prop_result[0],
+                        'location': prop_result[1],
+                        'type': prop_result[2]
+                    }
+                    
+                    # Get owner details
+                    cursor.execute("""
+                        SELECT CONCAT(u.firstname, ' ', u.lastname), u.email, u.phone_number
+                        FROM core_user u
+                        WHERE u.id = %s
+                    """, [req.owner_id])
+                    
+                    owner_result = cursor.fetchone()
+                    if not owner_result:
+                        continue
+                    
+                    owner_details = {
+                        'name': owner_result[0],
+                        'email': owner_result[1],
+                        'phone': owner_result[2]
+                    }
+                
+                requests_data.append({
+                    'request_id': req.request_id,
+                    'property_id': req.property_id,
+                    'property': property_details,
+                    'owner_id': req.owner_id,
+                    'owner': owner_details,
+                    'dates': {
+                        'start_date': req.start_date.isoformat(),
+                        'end_date': req.end_date.isoformat(),
+                        'created_at': req.created_at.isoformat(),
+                        'response_date': req.response_date.isoformat() if req.response_date else None
+                    },
+                    'message': req.message,
+                    'status': req.status,
+                    'response_message': req.response_message,
+                    'agreement_id': req.agreement_id
+                })
+            
+            return True, requests_data
+            
+        except Exception as e:
+            return False, str(e)
+    
+    @classmethod
+    def get_rental_request(cls, request_id, user_id):
+        """
+        Get details of a specific rental request
+        """
+        try:
+            # Get the rental request
+            try:
+                rental_request = RentalRequest.objects.get(request_id=request_id)
+            except RentalRequest.DoesNotExist:
+                return False, "Rental request not found"
+            
+            # Check if user is the owner or requester
+            if user_id != rental_request.owner_id and user_id != rental_request.requester_id:
+                return False, "You do not have permission to view this rental request"
+            
+            # Get property details
+            with connections['core'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT p.title, p.location, p.property_type, p.status
+                    FROM core_property p
+                    WHERE p.id = %s
+                """, [rental_request.property_id])
+                
+                prop_result = cursor.fetchone()
+                if not prop_result:
+                    return False, "Property details not found"
+                
+                property_details = {
+                    'title': prop_result[0],
+                    'location': prop_result[1],
+                    'type': prop_result[2],
+                    'status': prop_result[3]
+                }
+                
+                # Get owner details
+                cursor.execute("""
+                    SELECT CONCAT(u.firstname, ' ', u.lastname), u.email, u.phone_number
+                    FROM core_user u
+                    WHERE u.id = %s
+                """, [rental_request.owner_id])
+                
+                owner_result = cursor.fetchone()
+                if not owner_result:
+                    return False, "Owner details not found"
+                
+                owner_details = {
+                    'name': owner_result[0],
+                    'email': owner_result[1],
+                    'phone': owner_result[2]
+                }
+                
+                # Get requester details
+                cursor.execute("""
+                    SELECT CONCAT(u.firstname, ' ', u.lastname), u.email, u.phone_number
+                    FROM core_user u
+                    WHERE u.id = %s
+                """, [rental_request.requester_id])
+                
+                requester_result = cursor.fetchone()
+                if not requester_result:
+                    return False, "Requester details not found"
+                
+                requester_details = {
+                    'name': requester_result[0],
+                    'email': requester_result[1],
+                    'phone': requester_result[2]
+                }
+            
+            # Build response data
+            request_data = {
+                'request_id': rental_request.request_id,
+                'property_id': rental_request.property_id,
+                'property': property_details,
+                'owner_id': rental_request.owner_id,
+                'owner': owner_details,
+                'requester_id': rental_request.requester_id,
+                'requester': requester_details,
+                'dates': {
+                    'start_date': rental_request.start_date.isoformat(),
+                    'end_date': rental_request.end_date.isoformat(),
+                    'created_at': rental_request.created_at.isoformat(),
+                    'response_date': rental_request.response_date.isoformat() if rental_request.response_date else None
+                },
+                'message': rental_request.message,
+                'status': rental_request.status,
+                'response_message': rental_request.response_message,
+                'agreement_id': rental_request.agreement_id
+            }
+            
+            return True, request_data
+            
+        except Exception as e:
+            return False, str(e)
+    
+    @classmethod
+    def respond_to_rental_request(cls, request_id, owner_id, status, response_message=None, 
+                                 monthly_rent=None, security_deposit=None, terms_conditions=None):
+        """
+        Respond to a rental request (approve or reject)
+        """
+        try:
+            # Get the rental request
+            try:
+                rental_request = RentalRequest.objects.get(request_id=request_id)
+            except RentalRequest.DoesNotExist:
+                return False, "Rental request not found", None
+            
+            # Verify ownership
+            if rental_request.owner_id != owner_id:
+                return False, "You do not have permission to respond to this request", None
+            
+            # Check if request is still pending
+            if rental_request.status != 'pending':
+                return False, f"This request has already been {rental_request.status}", None
+            
+            # Update request status and response info
+            rental_request.status = status
+            rental_request.response_message = response_message
+            rental_request.response_date = timezone.now()
+            
+            # If approved, create a rental agreement
+            if status == 'approved':
+                # Validate required fields for creating an agreement
+                if not all([monthly_rent]):
+                    return False, "Monthly rent is required to approve a rental request", None
+                
+                # Create rental agreement
+                success, message, agreement_id = cls.create_agreement_from_request(
+                    rental_request=rental_request,
+                    monthly_rent=monthly_rent,
+                    security_deposit=security_deposit or 0,
+                    terms_conditions=terms_conditions
+                )
+                
+                if not success:
+                    return False, message, None
+                
+                # Update request with agreement ID
+                rental_request.agreement_id = agreement_id
+            
+            rental_request.save()
+            
+            return True, f"Rental request {status}", rental_request.agreement_id if status == 'approved' else None
+            
+        except Exception as e:
+            return False, str(e), None
+    
+    @classmethod
+    def create_agreement_from_request(cls, rental_request, monthly_rent, security_deposit=0, terms_conditions=None):
+        """
+        Create a rental agreement from an approved rental request
+        """
+        try:
+            # Create rental agreement using the RentalAgreementService
+            return RentalAgreementService.create_rental_agreement(
+                property_id=rental_request.property_id,
+                owner_id=rental_request.owner_id,
+                tenant_id=rental_request.requester_id,
+                start_date=rental_request.start_date,
+                end_date=rental_request.end_date,
+                monthly_rent=monthly_rent,
+                security_deposit=security_deposit,
+                terms_conditions=terms_conditions
+            )
+            
+        except Exception as e:
+            return False, str(e), None 

@@ -564,6 +564,38 @@ class RentalAgreement(models.Model):
         self.save()
         return True
 
+class RentalRequest(models.Model):
+    """
+    Represents a request from a property seeker to rent a property.
+    Property owners can approve or reject these requests and create rental agreements from them.
+    """
+    REQUEST_STATUS = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ]
+    
+    request_id = models.CharField(max_length=64, unique=True)
+    property_id = models.CharField(max_length=100)
+    owner_id = models.IntegerField()
+    requester_id = models.IntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    message = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=REQUEST_STATUS, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    response_message = models.TextField(blank=True, null=True)
+    response_date = models.DateTimeField(null=True)
+    agreement_id = models.CharField(max_length=64, null=True, blank=True)
+    
+    class Meta:
+        db_table = 'ledger_rental_request'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Rental Request {self.request_id} - {self.status}"
+
 class PropertyTransfer(models.Model):
     """
     Represents a property ownership transfer transaction

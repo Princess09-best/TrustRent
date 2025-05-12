@@ -981,6 +981,7 @@ def get_document_requests(request):
                 # Get requests for owner's properties
                 cursor.execute("""
                     SELECT 
+                        dar.id,
                         p.title as property_title,
                         u.firstname || ' ' || u.lastname as requester_name,
                         u.email as requester_email,
@@ -988,7 +989,8 @@ def get_document_requests(request):
                         dar.status,
                         dar.reason,
                         dar.response_date,
-                        dar.response_note
+                        dar.response_note,
+                        p.id as property_id
                     FROM core_documentaccessrequest dar
                     JOIN core_userproperty up ON dar.user_property_id = up.id
                     JOIN core_property p ON up.property_id = p.id
@@ -996,17 +998,23 @@ def get_document_requests(request):
                     WHERE up.owner_id = %s
                     ORDER BY dar.request_date DESC
                 """, [request.user.id])
+                
+                columns = ['id', 'property_title', 'requester_name', 'requester_email',
+                          'request_date', 'status', 'reason', 'response_date', 'response_note', 'property_id']
+                
             elif role == 'property_seeker':
                 # Get requests made by the property seeker
                 cursor.execute("""
                     SELECT 
+                        dar.id,
                         p.title as property_title,
                         u.firstname || ' ' || u.lastname as owner_name,
                         dar.request_date,
                         dar.status,
                         dar.reason,
                         dar.response_date,
-                        dar.response_note
+                        dar.response_note,
+                        p.id as property_id
                     FROM core_documentaccessrequest dar
                     JOIN core_userproperty up ON dar.user_property_id = up.id
                     JOIN core_property p ON up.property_id = p.id
@@ -1014,12 +1022,12 @@ def get_document_requests(request):
                     WHERE dar.requester_id = %s
                     ORDER BY dar.request_date DESC
                 """, [request.user.id])
+                
+                columns = ['id', 'property_title', 'owner_name',
+                          'request_date', 'status', 'reason', 'response_date', 'response_note', 'property_id']
+                
             else:
                 return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
-
-            columns = ['property_title', 'contact_name', 'contact_email' if role == 'property_owner' else None,
-                      'request_date', 'status', 'reason', 'response_date', 'response_note']
-            columns = [col for col in columns if col is not None]
             
             requests = []
             for row in cursor.fetchall():
