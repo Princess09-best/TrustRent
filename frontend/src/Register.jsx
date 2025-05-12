@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -95,21 +96,46 @@ const Form = styled.form`
   width: 100%;
 `;
 
+const LoginLink = styled.div`
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  
+  a {
+    color: ${props => props.theme.colors.primary};
+    text-decoration: none;
+    font-weight: 500;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+`;
+
 const Register = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
     email: '',
     phone_number: '',
     password: '',
-    role: 'property_buyer',
+    role: 'property_seeker',
     id_type: 'Ghana Card',
     id_value: ''
   });
 
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     setFormData({ 
@@ -122,6 +148,7 @@ const Register = () => {
     e.preventDefault();
     setMessage(null);
     setError(false);
+    setLoading(true);
 
     try {
       const response = await axios.post('/api/user/register/', formData, {
@@ -140,7 +167,7 @@ const Register = () => {
         email: '',
         phone_number: '',
         password: '',
-        role: 'property_buyer',
+        role: 'property_seeker',
         id_type: 'Ghana Card',
         id_value: ''
       });
@@ -168,6 +195,8 @@ const Register = () => {
         // Something happened in setting up the request that triggered an Error
         setMessage('An error occurred. Please try again.');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,7 +229,7 @@ const Register = () => {
             required 
           />
           <Input 
-            name="phone_number" 
+            name="phone_number"
             placeholder="Phone Number"
             value={formData.phone_number}
             onChange={handleChange} 
@@ -214,23 +243,40 @@ const Register = () => {
             onChange={handleChange} 
             required 
           />
-          <Select name="role" onChange={handleChange} value={formData.role}>
-            <option value="property_buyer">Buyer</option>
-            <option value="property_owner">Owner</option>
+          <Select 
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            required
+          >
+            <option value="property_seeker">Property Seeker</option>
+            <option value="property_owner">Property Owner</option>
           </Select>
-          <Select name="id_type" onChange={handleChange} value={formData.id_type}>
+          <Select 
+            name="id_type"
+            value={formData.id_type}
+            onChange={handleChange}
+            required
+          >
             <option value="Ghana Card">Ghana Card</option>
+            <option value="Voter ID">Voter ID</option>
             <option value="Passport">Passport</option>
+            <option value="Driver License">Driver's License</option>
           </Select>
           <Input 
-            name="id_value" 
-            placeholder="ID Value"
+            name="id_value"
+            placeholder="ID Number"
             value={formData.id_value}
             onChange={handleChange} 
             required 
           />
-          <Button type="submit">Register</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Registering...' : 'Register'}
+          </Button>
         </Form>
+        <LoginLink>
+          Already have an account? <a href="/login">Login here</a>
+        </LoginLink>
       </FormCard>
     </Container>
   );

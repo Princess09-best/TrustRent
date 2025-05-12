@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Register from './Register';
 import Login from './Login';
 import VerificationPending from './VerificationPending';
@@ -16,6 +16,8 @@ import Dashboard from './Dashboard';
 import Navbar from './Navbar';
 import LandingPage from './LandingPage';
 import styled from 'styled-components';
+import AuthProvider from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -34,81 +36,125 @@ const ContentContainer = styled.div`
   align-items: center;
 `;
 
-function App() {
-  // Check if user is on landing page to hide the navbar
-  const isLandingPage = window.location.pathname === '/';
+// DEVELOPMENT MODE - Set to false for production
+const isDevelopment = true;
+
+// NavbarWrapper to handle navbar visibility
+const NavbarWrapper = ({ devMode, devRole }) => {
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
   
-  // Check if user is authenticated
-  const isAuthenticated = !!localStorage.getItem('token');
+  return !isLandingPage && <Navbar devMode={devMode} devRole={devRole} />;
+};
+
+function App() {
+  // For development, we can set a mock user role
+  const [devRole, setDevRole] = useState('property_owner');
 
   return (
-    <Router>
-      <AppContainer>
-        {/* Only show navbar if not on landing page AND authenticated */}
-        {!isLandingPage && isAuthenticated && <Navbar />}
-        
-        <ContentContainer>
-          <Routes>
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/verification-pending" element={<VerificationPending />} />
-            
-            {/* Dashboard - Protected Route */}
-            <Route 
-              path="/dashboard" 
-              element={isAuthenticated ? <Dashboard /> : <Login />} 
-            />
-            
-            {/* Admin Routes - Protected */}
-            <Route 
-              path="/admin/verify-users" 
-              element={isAuthenticated ? <AdminVerifyUsers /> : <Login />} 
-            />
-            <Route 
-              path="/admin/create-account" 
-              element={isAuthenticated ? <AdminCreateAccount /> : <Login />} 
-            />
-            <Route 
-              path="/admin/blockchain-verification" 
-              element={isAuthenticated ? <BlockchainVerification /> : <Login />} 
-            />
-            
-            {/* Land Representative Routes - Protected */}
-            <Route 
-              path="/land-rep/manage-properties" 
-              element={isAuthenticated ? <LandRepManageProperties /> : <Login />} 
-            />
-            
-            {/* Property Routes - Protected */}
-            <Route 
-              path="/create-property" 
-              element={isAuthenticated ? <CreateProperty /> : <Login />} 
-            />
-            <Route 
-              path="/property/:propertyId" 
-              element={isAuthenticated ? <PropertyDetails /> : <Login />} 
-            />
-            
-            {/* Rental Agreement Routes - Protected */}
-            <Route 
-              path="/rental-agreements" 
-              element={isAuthenticated ? <RentalAgreementList /> : <Login />} 
-            />
-            <Route 
-              path="/rental-agreements/create" 
-              element={isAuthenticated ? <RentalAgreementCreate /> : <Login />} 
-            />
-            <Route 
-              path="/rental-agreements/:agreementId" 
-              element={isAuthenticated ? <RentalAgreementDetails /> : <Login />} 
-            />
-            
-            {/* Landing Page as Homepage */}
-            <Route path="/" element={<LandingPage />} />
-          </Routes>
-        </ContentContainer>
-      </AppContainer>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppContainer>
+          {isDevelopment ? (
+            // Development mode with role selector
+            <div style={{ width: '100%', padding: '10px 0', backgroundColor: '#ff6b6b', color: 'white', textAlign: 'center' }}>
+              <span style={{ marginRight: '10px' }}>DEVELOPMENT MODE</span>
+              <select 
+                value={devRole} 
+                onChange={(e) => setDevRole(e.target.value)}
+                style={{ padding: '5px', borderRadius: '4px' }}
+              >
+                <option value="admin">Admin</option>
+                <option value="land_rep">Land Representative</option>
+                <option value="property_owner">Property Owner</option>
+                <option value="property_seeker">Property Seeker</option>
+              </select>
+            </div>
+          ) : null}
+          
+          {/* Using NavbarWrapper for dynamic navbar visibility */}
+          <NavbarWrapper devMode={isDevelopment} devRole={devRole} />
+          
+          <ContentContainer>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/verification-pending" element={<VerificationPending />} />
+              
+              {/* Protected routes - accessible to any authenticated user */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard devMode={isDevelopment} devRole={devRole} />
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Routes - only accessible to admin users */}
+              <Route path="/admin/verify-users" element={
+                <ProtectedRoute requiredRoles={['admin', 'sys_admin']}>
+                  <AdminVerifyUsers />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/create-account" element={
+                <ProtectedRoute requiredRoles={['admin', 'sys_admin']}>
+                  <AdminCreateAccount />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/blockchain-verification" element={
+                <ProtectedRoute requiredRoles={['admin', 'sys_admin']}>
+                  <BlockchainVerification />
+                </ProtectedRoute>
+              } />
+              
+              {/* Land Representative Routes */}
+              <Route path="/land-rep/manage-properties" element={
+                <ProtectedRoute requiredRoles={['land_rep', 'admin', 'sys_admin']}>
+                  <LandRepManageProperties />
+                </ProtectedRoute>
+              } />
+              
+              {/* Property Routes */}
+              <Route path="/create-property" element={
+                <ProtectedRoute requiredRoles={['property_owner']}>
+                  <CreateProperty />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/property/:propertyId" element={
+                <ProtectedRoute>
+                  <PropertyDetails />
+                </ProtectedRoute>
+              } />
+              
+              {/* Rental Agreement Routes */}
+              <Route path="/rental-agreements" element={
+                <ProtectedRoute>
+                  <RentalAgreementList />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/rental-agreements/create" element={
+                <ProtectedRoute requiredRoles={['property_owner']}>
+                  <RentalAgreementCreate />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/rental-agreements/:agreementId" element={
+                <ProtectedRoute>
+                  <RentalAgreementDetails />
+                </ProtectedRoute>
+              } />
+              
+              {/* Catch all other routes and redirect to dashboard for authenticated users, otherwise to landing page */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ContentContainer>
+        </AppContainer>
+      </Router>
+    </AuthProvider>
   );
 }
 

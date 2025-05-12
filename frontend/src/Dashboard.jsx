@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
+import { useAuth } from './context/AuthContext';
 
 const Container = styled.div`
   max-width: 1400px;
@@ -162,108 +163,92 @@ const LoadingSpinner = styled.div`
   color: ${props => props.theme.colors.primary};
 `;
 
-function Dashboard() {
+function Dashboard({ devMode = false, devRole = null }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { currentUser, userRole, isAuthenticated, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     properties: 0,
     agreements: 0,
     pendingVerifications: 0,
     pendingProperties: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchDashboardData = async () => {
+      // If in development mode, create mock data
+      if (devMode) {
+        // Use the user from auth context if available, otherwise create mock user
+        const role = devRole || userRole;
+        
+        // Set mock stats based on role
+        if (role === 'admin') {
+          setStats({
+            properties: 45,
+            agreements: 28,
+            pendingVerifications: 7,
+            pendingProperties: 12
+          });
+        } else if (role === 'land_rep') {
+          setStats({
+            properties: 45,
+            pendingProperties: 12,
+            verifiedProperties: 30,
+            rejectedProperties: 3
+          });
+        } else if (role === 'property_owner') {
+          setStats({
+            properties: 5,
+            agreements: 3,
+            pendingAgreements: 1,
+            activeAgreements: 2
+          });
+        } else if (role === 'property_seeker') {
+          setStats({
+            agreements: 2,
+            pendingAgreements: 1,
+            activeAgreements: 1,
+            propertiesViewed: 15
+          });
+        }
+        
+        setLoading(false);
+        return;
+      }
+
+      // In production, use the authenticated user from context
+      if (!isAuthenticated && !devMode) {
+        navigate('/login');
+        return;
+      }
+
       try {
         const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
-        // Fetch user profile
-        const response = await fetch('/api/user/profile/', {
+        
+        // Fetch dashboard stats from the API
+        const response = await fetch('/api/dashboard/stats/', {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
 
-        if (!response.ok) {
-          // If unauthorized, clear token and redirect to login
-          if (response.status === 401) {
-            localStorage.removeItem('token');
-            navigate('/login');
-            return;
-          }
-          throw new Error('Failed to fetch user profile');
+        if (response.ok) {
+          const statsData = await response.json();
+          setStats(statsData);
         }
-
-        const userData = await response.json();
-        setUser(userData);
-
-        // Fetch statistics based on user role
-        await fetchRoleBasedStats(userData.role, token);
+        
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching user profile:', error);
-        // On error, redirect to login
-        localStorage.removeItem('token');
-        navigate('/login');
-      } finally {
+        console.error('Error fetching dashboard data:', error);
         setLoading(false);
       }
     };
 
-    fetchUserProfile();
-  }, [navigate]);
+    fetchDashboardData();
+  }, [navigate, devMode, devRole, isAuthenticated, userRole]);
 
-  const fetchRoleBasedStats = async (role, token) => {
-    try {
-      // Different endpoints based on role
-      let endpoint = '';
-      
-      switch(role) {
-        case 'admin':
-          endpoint = '/api/admin/stats/';
-          break;
-        case 'land_rep':
-          endpoint = '/api/land-rep/stats/';
-          break;
-        case 'property_owner':
-          endpoint = '/api/property/owner-stats/';
-          break;
-        case 'property_seeker':
-          endpoint = '/api/property/seeker-stats/';
-          break;
-        default:
-          return;
-      }
-      
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch statistics');
-      }
-      
-      const statsData = await response.json();
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error fetching statistics:', error);
-      // Set default stats if fetching fails
-      setStats({
-        properties: 0,
-        agreements: 0,
-        pendingVerifications: 0,
-        pendingProperties: 0
-      });
-    }
-  };
-
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <Container>
         <LoadingSpinner>Loading dashboard...</LoadingSpinner>
@@ -271,16 +256,18 @@ function Dashboard() {
     );
   }
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  // Determine which user object to use (dev mock or authenticated user)
+  const user = devMode ? 
+    { first_name: 'Dev', last_name: 'User', role: devRole || 'property_owner' } : 
+    currentUser;
 
   // Render different features based on user role
   const renderRoleBasedFeatures = () => {
-    const role = user?.role;
+    // Use the role from the dev mode or from the authenticated user
+    const role = devMode ? devRole : userRole;
 
     if (role === 'admin' || role === 'sys_admin') {
+      // Admin dashboard content
       return (
         <>
           <Title>Admin Dashboard</Title>
@@ -518,7 +505,7 @@ function Dashboard() {
           Welcome, {user?.first_name} {user?.last_name}
         </h2>
         <p style={{ fontSize: '1.2rem', opacity: '0.9' }}>
-          Here's what you can do with your {user?.role?.replace('_', ' ')} account
+          Here's what you can do with your {(devMode ? devRole : userRole)?.replace('_', ' ')} account
         </p>
       </WelcomeSection>
       

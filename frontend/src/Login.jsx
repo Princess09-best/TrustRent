@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -97,10 +97,23 @@ const RegisterLink = styled.div`
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, error: authError, isAuthenticated, loading: authLoading } = useAuth();
+  
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Redirect to the page they were trying to access, or to dashboard
+  const from = location.state?.from?.pathname || '/dashboard';
+
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleChange = (e) => {
     setFormData({ 
@@ -116,50 +129,45 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/user/login/', formData);
+      const result = await login(formData.email, formData.password);
       
-      // Get token from Authorization header 
-      const token = response.headers['authorization']?.split(' ')[1];
-      
-      if (token) {
-        // Store the token
-        localStorage.setItem('token', token);
-        
-        // Show success message briefly before redirecting
+      if (result.success) {
+        // Show success message before redirecting
         setError(false);
         setMessage('Login successful! Redirecting to dashboard...');
-        
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1000);
+      } else if (result.redirectTo) {
+        // Handle special case redirects (like verification pending)
+        navigate(result.redirectTo);
       } else {
-        throw new Error('No token received from server');
+        // Display error from the auth context
+        setError(true);
+        setMessage(authError || 'Login failed. Please try again.');
       }
-    } catch (error) {
+    } catch (err) {
       setError(true);
-      if (error.response) {
-        // If the error is due to verification pending, redirect to verification page
-        if (error.response.status === 403 && error.response.data.is_verified === false) {
-          navigate('/verification-pending');
-          return;
-        }
-        setMessage(error.response.data.error || 'Invalid credentials. Please try again.');
-      } else if (error.request) {
-        setMessage('No response from server. Please check your connection.');
-      } else {
-        setMessage('Something went wrong. Please try again.');
-      }
+      setMessage('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading if auth context is still loading
+  if (authLoading) {
+    return (
+      <Container>
+        <FormCard>
+          <Title>Loading...</Title>
+        </FormCard>
+      </Container>
+    );
+  }
 
   return (
     <Container>
       <FormCard>
         <Title>Login to Your Account</Title>
         {message && <Message error={error}>{message}</Message>}
+        {authError && !message && <Message error={true}>{authError}</Message>}
         <Form onSubmit={handleSubmit}>
           <Input 
             name="email" 

@@ -1,230 +1,174 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useAuth } from './context/AuthContext';
 
 const NavbarContainer = styled.nav`
   width: 100%;
   background-color: ${props => props.theme.colors.white};
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 15px 20px;
-  margin-bottom: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 15px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+`;
+
+const NavbarContent = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
 `;
 
-const Logo = styled.div`
-  font-size: 24px;
+const Logo = styled(Link)`
+  font-size: 1.5rem;
   font-weight: 700;
   color: ${props => props.theme.colors.primary};
+  text-decoration: none;
+  transition: opacity 0.3s;
+  
+  &:hover {
+    opacity: 0.8;
+  }
 `;
 
 const NavLinks = styled.div`
   display: flex;
-  gap: 20px;
+  gap: 30px;
+  align-items: center;
+  
+  @media (max-width: 768px) {
+    display: ${props => (props.isOpen ? 'flex' : 'none')};
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background-color: ${props => props.theme.colors.white};
+    padding: 20px;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+    align-items: flex-start;
+  }
 `;
 
 const NavLink = styled(Link)`
-  color: ${props => props.theme.colors.black};
+  color: #333;
   text-decoration: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  position: relative;
+  font-weight: 500;
+  transition: color 0.3s;
   
   &:hover {
-    background-color: #f5f5f5;
+    color: ${props => props.theme.colors.primary};
   }
-
-  ${props => props.active && `
-    color: ${props.theme.colors.primary};
-    font-weight: 500;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background-color: ${props.theme.colors.primary};
-    }
-  `}
 `;
 
-const UserSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 15px;
-`;
-
-const UserInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  font-size: 14px;
-`;
-
-const UserName = styled.span`
-  font-weight: 500;
-`;
-
-const UserRole = styled.span`
-  color: #666;
-  font-size: 12px;
-`;
-
-const LogoutButton = styled.button`
-  background-color: transparent;
-  border: 1px solid ${props => props.theme.colors.error};
-  color: ${props => props.theme.colors.error};
-  padding: 8px 12px;
+const Button = styled.button`
+  padding: 8px 16px;
+  background-color: ${props => props.theme.colors.primary};
+  color: white;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.3s;
+  font-weight: 500;
+  transition: background-color 0.3s;
   
   &:hover {
-    background-color: ${props => props.theme.colors.error};
-    color: white;
+    background-color: #006666;
   }
 `;
 
-function Navbar() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+const MobileMenuButton = styled.button`
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  
+  @media (max-width: 768px) {
+    display: block;
+  }
+`;
+
+const Navbar = ({ devMode = false, devRole = null }) => {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
-        const response = await fetch('/api/user/profile/', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          // If unauthorized, clear token and redirect to login
-          if (response.status === 401) {
-            localStorage.removeItem('token');
-            navigate('/login');
-            return;
-          }
-          throw new Error('Failed to fetch user profile');
-        }
-
-        const userData = await response.json();
-        setUser(userData);
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        // On error, redirect to login
-        localStorage.removeItem('token');
-        navigate('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [navigate]);
-
+  const { isAuthenticated, userRole, logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    logout();
     navigate('/');
   };
 
-  // Determine which links to show based on user role
-  const renderNavLinks = () => {
-    if (loading || !user) return null;
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
-    const isActive = (path) => location.pathname === path;
-    
-    // Common links for all users
-    const links = [
-      <NavLink key="dashboard" to="/dashboard" active={isActive('/dashboard')}>
-        Dashboard
-      </NavLink>
-    ];
+  // Determine role (from development mode or authenticated user)
+  const role = devMode ? devRole : userRole;
 
-    // Role-specific links
-    switch(user.role) {
-      case 'admin':
-        links.push(
-          <NavLink key="verify-users" to="/admin/verify-users" active={isActive('/admin/verify-users')}>
-            Verify Users
-          </NavLink>,
-          <NavLink key="create-account" to="/admin/create-account" active={isActive('/admin/create-account')}>
-            Create Account
-          </NavLink>,
-          <NavLink key="blockchain" to="/admin/blockchain-verification" active={isActive('/admin/blockchain-verification')}>
-            Blockchain
-          </NavLink>
-        );
-        break;
-      case 'land_rep':
-        links.push(
-          <NavLink key="manage-properties" to="/land-rep/manage-properties" active={isActive('/land-rep/manage-properties')}>
-            Manage Properties
-          </NavLink>
-        );
-        break;
-      case 'property_owner':
-        links.push(
-          <NavLink key="create-property" to="/create-property" active={isActive('/create-property')}>
-            Create Property
-          </NavLink>,
-          <NavLink key="rental-agreements" to="/rental-agreements" active={isActive('/rental-agreements')}>
-            Rental Agreements
-          </NavLink>
-        );
-        break;
-      case 'property_seeker':
-        links.push(
-          <NavLink key="properties" to="/properties" active={isActive('/properties')}>
-            Find Properties
-          </NavLink>,
-          <NavLink key="rental-agreements" to="/rental-agreements" active={isActive('/rental-agreements')}>
-            Rental Agreements
-          </NavLink>
-        );
-        break;
-      default:
-        break;
+  // Render different links based on user role
+  const renderRoleBasedLinks = () => {
+    if (role === 'admin' || role === 'sys_admin') {
+      return (
+        <>
+          <NavLink to="/admin/verify-users">Verify Users</NavLink>
+          <NavLink to="/admin/create-account">Create Admin</NavLink>
+          <NavLink to="/admin/blockchain-verification">Blockchain</NavLink>
+        </>
+      );
     }
-
-    return links;
+    
+    if (role === 'land_rep') {
+      return (
+        <NavLink to="/land-rep/manage-properties">Manage Properties</NavLink>
+      );
+    }
+    
+    if (role === 'property_owner') {
+      return (
+        <>
+          <NavLink to="/create-property">Create Property</NavLink>
+          <NavLink to="/my-properties">My Properties</NavLink>
+        </>
+      );
+    }
+    
+    return null;
   };
 
   return (
     <NavbarContainer>
-      <Logo>
-        <Link to="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
-          TrustRent
-        </Link>
-      </Logo>
-      
-      <NavLinks>
-        {renderNavLinks()}
-      </NavLinks>
-      
-      <UserSection>
-        {!loading && user && (
-          <>
-            <UserInfo>
-              <UserName>{user.first_name} {user.last_name}</UserName>
-              <UserRole>{user.role.replace('_', ' ')}</UserRole>
-            </UserInfo>
-            <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
-          </>
-        )}
-      </UserSection>
+      <NavbarContent>
+        <Logo to="/dashboard">TrustRent</Logo>
+        
+        <MobileMenuButton onClick={toggleMenu}>
+          ☰
+        </MobileMenuButton>
+        
+        <NavLinks isOpen={isMenuOpen}>
+          {/* Common links for all authenticated users */}
+          {(isAuthenticated || devMode) && (
+            <>
+              <NavLink to="/dashboard">Dashboard</NavLink>
+              <NavLink to="/rental-agreements">Agreements</NavLink>
+              {renderRoleBasedLinks()}
+              <Button onClick={handleLogout}>Logout</Button>
+            </>
+          )}
+          
+          {/* Links for non-authenticated users (should not be visible, as navbar is hidden on landing page) */}
+          {!isAuthenticated && !devMode && (
+            <>
+              <NavLink to="/login">Login</NavLink>
+              <NavLink to="/register">Register</NavLink>
+            </>
+          )}
+        </NavLinks>
+      </NavbarContent>
     </NavbarContainer>
   );
-}
+};
 
 export default Navbar;
