@@ -1,0 +1,37 @@
+# Secrets — never commit these.
+.env
+.env.*
+!.env.example
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+env/
+
+# Django
+*.log
+db.sqlite3
+staticfiles/
+
+# User uploads at runtime — not source. MEDIA_ROOT in settings.py.
+media/
+
+# Database dumps
+*.dump
+*.sql.gz
+
+# Node / React
+node_modules/
+frontend/build/
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

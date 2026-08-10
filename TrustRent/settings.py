@@ -10,25 +10,49 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Secrets are read from the environment, never committed. Copy .env.example
+# to .env and fill in your own values; .env is gitignored.
+load_dotenv(BASE_DIR / '.env')
+
+
+def require_env(name):
+    """Fail loudly at startup rather than silently falling back to a default.
+
+    A default here would be a trap: the project would boot with a known
+    secret and nobody would notice until it was in production.
+    """
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}. "
+            "Copy .env.example to .env and fill it in. See README.md."
+        )
+    return value
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bllx1i9))q5dupu99m424=!jmtdu%6$=4)&ysulm1448#lf0*^'
+# Also used to sign JWTs (see SIMPLE_JWT below), so leaking it means anyone
+# can mint valid tokens for any user.
+SECRET_KEY = require_env('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h]
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Only for development
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # Development only — never with DEBUG off
 CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
@@ -99,48 +123,55 @@ WSGI_APPLICATION = 'TrustRent.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Each app owns its own database; TrustRentRouter (db_router.py) pins each
+# app's tables to the right one. Credentials come from the environment.
+DB_USER = os.environ.get('POSTGRES_USER', 'postgres')
+DB_PASSWORD = require_env('POSTGRES_PASSWORD')
+DB_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
+DB_PORT = os.environ.get('POSTGRES_PORT', '5432')
+
 DATABASES = {
     'core': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'trustrent_core_db',
-        'USER': 'postgres',
-        'PASSWORD': 'INcorrect09$$9',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_CORE_DB', 'trustrent_core_db'),
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
         'TEST': {
             'MIRROR': 'default'
         }
     },
     'ops': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'trustrent_ops_db',
-        'USER': 'postgres',
-        'PASSWORD': 'INcorrect09$$9',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_OPS_DB', 'trustrent_ops_db'),
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
         'TEST': {
             'MIRROR': 'default'
         }
     },
     'ledger': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'trustrent_ledger_db',
-        'USER': 'postgres',
-        'PASSWORD': 'INcorrect09$$9',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_LEDGER_DB', 'trustrent_ledger_db'),
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
         'TEST': {
             'MIRROR': 'default'
         }
     },
-    
+
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'trustrent_core_db',
-        'USER': 'postgres',
-        'PASSWORD': 'INcorrect09$$9',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_CORE_DB', 'trustrent_core_db'),
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
         'TEST': {
             'NAME': 'test_trustrent_db'
         }
