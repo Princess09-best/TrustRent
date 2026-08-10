@@ -177,6 +177,22 @@ python manage.py test
 3. **Replace the hand-rolled auth on `User`.** I store a `password_hash` on a plain model rather than extending Django's auth user, which means re-implementing things Django already does correctly. That was a mistake and I'd fix it before adding features.
 4. **Real Lands Commission integration.** Currently a human representative reviews deeds inside the app. An API — if one is ever exposed — would close the loop.
 
+### Where machine learning would actually earn its place
+
+Not built. Listed because each of these attacks the fraud problem directly — the test I'd apply to any of them is whether it makes *verification* better, not whether it makes the app sound more advanced.
+
+**Duplicate photo detection — the one I'd build first.** A common rental scam is lifting photos from a genuine listing and reposting them as your own. That is precisely what the system should catch, and it can't be done with a database query: identical-looking images have completely different bytes once cropped or recompressed. Embedding each uploaded image and checking it for near-duplicates against everything already stored flags the reuse at upload time, before any seeker sees the listing. It reuses the trust model already in place — a flagged listing goes to a human reviewer rather than being auto-rejected.
+
+**Title deed screening.** Right now a Lands Commission representative reads every deed by hand, and that is the bottleneck deciding whether this works beyond one city. OCR plus field extraction — parcel number, registered owner, issue date — cross-checked against the uploader's verified ID would turn the reviewer into someone handling flagged exceptions instead of reading every document. The human stays in the loop; the machine decides what deserves their attention. Deeds are legal instruments, so the model's output should never be the final word.
+
+**Listing anomaly signals.** Rent far below the norm for the area, an account created days ago, urgency language in the description. These are the standard markers of a scam listing and they are cheap to score. Useful as a ranking signal for reviewers, not as an automatic block.
+
+### Augmented reality
+
+A property tour you can take before travelling is a real benefit where a single viewing can cost most of a day. I originally planned AR for this, and I'd now scope it down: **360° photo tours get most of that value for a fraction of the effort**, and they need neither AR nor ML.
+
+Worth being clear that this is product polish rather than trust infrastructure. It makes browsing better; it does nothing about whether the person holding the keys owns the house. That distinction is why it sits below the items above.
+
 ---
 
 ## A note on this repository's history
